@@ -360,10 +360,7 @@ main:focus, h1:focus { outline: none; }
 
 .partners { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--space-6); padding: var(--space-5) 0 var(--space-7); }
 .partner { display: grid; justify-items: center; gap: var(--space-2); margin: 0; }
-.partner img { display: block; height: 120px; width: auto; }
 .partner figcaption { font-size: var(--text-sm); color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
-.partner--cluster .logo-orb { width: 200px; height: 200px; }
-.partner--cluster .logo-orb img { width: 200px; height: 200px; }
 
 .how { padding: var(--space-6) 0 var(--space-7); }
 .how__steps { position: relative; list-style: none; padding: 0; margin: var(--space-5) 0 0; display: grid; gap: var(--space-5); }
@@ -388,3 +385,7 @@ main:focus, h1:focus { outline: none; }
 .video-how__frame { max-width: 960px; margin: var(--space-5) auto 0; padding: var(--space-3); border-radius: var(--radius-lg); }
 .video-how__frame video { display: block; width: 100%; height: auto; border-radius: var(--radius-md); background: var(--paper-tint); }
 .video-how .section-note { text-align: center; }
+
+/* Partner logos: one badge size and one design for all three */
+.partners .partner .logo-orb { width: 200px; height: 200px; }
+.partners .partner .logo-orb img { display: block; width: 200px; height: 200px; object-fit: contain; background: transparent; }
