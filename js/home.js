@@ -9,7 +9,7 @@ function awardCard(award, index) {
     el('p', { class: 'award-card__coverage', text: award.coverage }),
     el('p', { class: 'award-card__blurb', text: award.blurb }),
     el('p', { class: 'award-card__meta' },
-      el('span', { class: `chip chip--${award.type}`, text: award.type === 'votes' ? 'By votes' : 'Scored by committee' }),
+      el('span', { class: `chip chip--${award.type}`, text: award.type === 'votes' ? 'By votes' : 'Open for nominations' }),
       el('span', { class: 'award-card__count', 'data-count': award.id, text: '' }),
     ),
     el('span', { class: 'award-card__go', 'aria-hidden': 'true', text: 'Open' }),
