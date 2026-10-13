@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Award | Nephrology Nurses Week 2026</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafcff">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Instrument+Sans:wght@400..700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/motion.css">
+</head>
+<body class="page page--award">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav glass">
+    <a class="brand" href="index.html">
+      <img class="brand__logo" src="assets/logo-192.webp" width="44" height="44" alt="">
+      <span class="brand__text"><b>Nephrology Nurses Week</b><small>Awards 2026</small></span>
+    </a>
+    <nav aria-label="Main">
+      <a href="index.html">Awards</a>
+      <a href="evaluate.html">Committee</a>
+      <a href="results.html">Results</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="award-hero">
+      <a class="back-link" href="index.html#awards" data-reveal>All awards</a>
+      <p class="eyebrow" id="award-group" data-reveal></p>
+      <h1 id="award-title" data-reveal></h1>
+      <p class="award-hero__meta" data-reveal>
+        <span class="chip" id="award-coverage"></span>
+        <span class="chip" id="award-type"></span>
+      </p>
+      <p class="lede" id="award-blurb" data-reveal></p>
+      <span class="award-hero__index" id="award-index" aria-hidden="true"></span>
+    </section>
+
+    <section class="winner glass" id="winner" hidden role="status" aria-labelledby="winner-title">
+      <div class="winner__burst" aria-hidden="true"></div>
+      <div class="winner__stage" aria-hidden="true">
+        <img class="winner__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
+      </div>
+      <p class="eyebrow" id="winner-title">Awardee</p>
+      <div id="winner-names" class="winner__names"></div>
+      <p class="winner__score" id="winner-score"></p>
+      <div class="winner__actions">
+        <button class="btn btn--ghost" type="button" id="winner-replay">Replay</button>
+        <button class="btn btn--ghost" type="button" id="winner-pause" aria-pressed="false">Pause animation</button>
+      </div>
+    </section>
+
+    <div class="award-layout">
+      <section class="criteria glass" aria-labelledby="criteria-title" data-reveal>
+        <h2 id="criteria-title">How it is judged</h2>
+        <ol class="criteria-list" id="criteria-list"></ol>
+        <p class="criteria__note" id="criteria-note"></p>
+      </section>
+
+      <section class="nominate glass" aria-labelledby="nominate-title" data-reveal>
+        <h2 id="nominate-title">Nominate</h2>
+        <form id="nominate-form" novalidate>
+          <div class="field">
+            <label for="nominator" id="nominator-label">Your name</label>
+            <input id="nominator" name="nominator" type="text" autocomplete="name" maxlength="80" required list="staff-names">
+            <datalist id="staff-names"></datalist>
+            <p class="field__hint" id="nominator-hint"></p>
+          </div>
+          <div class="field">
+            <label for="nominee" id="nominee-label">Nominee</label>
+            <select id="nominee" name="nominee" required>
+              <option value="">Choose from the staff list</option>
+            </select>
+          </div>
+          <div class="field" id="reason-field">
+            <label for="reason">Why this person</label>
+            <textarea id="reason" name="reason" rows="4" maxlength="600" aria-describedby="reason-hint"></textarea>
+            <p class="field__hint" id="reason-hint">One or two concrete examples help the committee. 600 characters at most.</p>
+          </div>
+          <p class="form-msg" id="form-msg" role="alert"></p>
+          <button class="btn btn--primary btn--block" type="submit" id="nominate-submit">Send nomination</button>
+        </form>
+      </section>
+
+      <section class="nominees glass" aria-labelledby="nominees-title" data-reveal>
+        <h2 id="nominees-title">Nominees so far</h2>
+        <ul class="nominee-list" id="nominee-list" aria-live="polite"></ul>
+      </section>
+    </div>
+
+    <nav class="award-pager" aria-label="Other awards">
+      <a class="award-pager__link glass" id="pager-prev" href="#"><small>Previous</small><b></b></a>
+      <a class="award-pager__link award-pager__link--next glass" id="pager-next" href="#"><small>Next</small><b></b></a>
+    </nav>
+  </main>
+
+  <footer class="site-footer">
+    <p>Nephrology Nursing Cluster, Southern Philippines Medical Center, Davao City.</p>
+  </footer>
+
+  <div class="toast-host" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/award.js"></script>
+  <script type="module" src="js/motion.js"></script>
+</body>
+</html>

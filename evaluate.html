@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Committee scoring | Nephrology Nurses Week 2026</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafcff">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Instrument+Sans:wght@400..700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/motion.css">
+</head>
+<body class="page page--evaluate">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav glass">
+    <a class="brand" href="index.html">
+      <img class="brand__logo" src="assets/logo-192.webp" width="44" height="44" alt="">
+      <span class="brand__text"><b>Nephrology Nurses Week</b><small>Awards 2026</small></span>
+    </a>
+    <nav aria-label="Main">
+      <a href="index.html">Awards</a>
+      <a href="evaluate.html">Committee</a>
+      <a href="results.html">Results</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="gate glass" id="gate" aria-labelledby="gate-title" data-reveal>
+      <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
+      <h1 id="gate-title">Committee scoring</h1>
+      <p class="lede">Sign in with your name and the committee PIN.</p>
+      <form id="gate-form" novalidate>
+        <div class="field">
+          <label for="evaluator">Your name</label>
+          <input id="evaluator" name="evaluator" type="text" autocomplete="name" maxlength="80" required>
+        </div>
+        <div class="field">
+          <label for="pin">Committee PIN</label>
+          <input id="pin" name="pin" type="password" autocomplete="off" maxlength="64" required>
+        </div>
+        <p class="form-msg" id="gate-msg" role="alert"></p>
+        <button class="btn btn--primary btn--block" type="submit" id="gate-submit">Sign in</button>
+      </form>
+    </section>
+
+    <section class="workspace" id="workspace" hidden>
+      <header class="workspace__head">
+        <div>
+          <p class="eyebrow">Committee scoring</p>
+          <h1 id="workspace-title" tabindex="-1">Score the nominees</h1>
+          <p class="workspace__who">Evaluator: <b id="who"></b> <button class="link-btn" type="button" id="sign-out">Sign out</button></p>
+        </div>
+        <div class="progress glass" aria-live="polite">
+          <span class="progress__ring" id="progress-ring" aria-hidden="true"></span>
+          <p><b id="progress-done">0</b> of <b id="progress-all">0</b> scored</p>
+        </div>
+      </header>
+
+      <div class="workspace__body">
+        <nav class="award-tabs glass" aria-label="Awards">
+          <ul id="award-tabs"></ul>
+        </nav>
+        <div class="score-panel" id="score-panel" tabindex="-1"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Scores stay with the selection committee.</p>
+  </footer>
+
+  <div class="toast-host" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/evaluate.js"></script>
+  <script type="module" src="js/motion.js"></script>
+</body>
+</html>

@@ -1,0 +1,576 @@
+/*
+ * Motion layer: entrance reveals, ambient drift, pointer feedback, winner sequence.
+ * Layout, colour, and size stay in main.css.
+ * Animated properties: transform, opacity, clip-path, background-position (winner name sheen), and the registered --p and --gold-angle.
+ * box-shadow is animated only in the short feedback pulse.
+ */
+
+@view-transition {
+  navigation: auto;
+}
+
+/* ---------- Page enter and cross-page fade ---------- */
+
+main {
+  animation: page-enter var(--dur-page) var(--ease-out) backwards;
+}
+
+::view-transition-old(root) {
+  animation: fade-out var(--dur-base) var(--ease-out) both;
+}
+
+::view-transition-new(root) {
+  animation: view-rise var(--dur-page) var(--ease-out) both;
+}
+
+/* ---------- Reveal on scroll ---------- */
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+}
+
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-page) var(--ease-out);
+  transition-delay: calc(min(var(--i, 0), 8) * 60ms);
+}
+
+/* After the reveal, hover transitions must not wait for the stagger. */
+.js [data-reveal].is-in.is-done {
+  transition-delay: 0s;
+}
+
+/* ---------- Aurora ---------- */
+
+/* --scroll is a unitless scroll offset, set by motion.js. The offset is capped at 1000px. */
+.aurora {
+  transform: translate3d(0, calc(min(var(--scroll, 0), 1000) * -0.04px), 0);
+  will-change: transform;
+}
+
+.aurora i {
+  will-change: transform;
+  animation: aurora-drift-a 28s var(--ease-in-out) infinite alternate;
+}
+
+.aurora i:nth-child(2) {
+  animation-name: aurora-drift-b;
+  animation-duration: 36s;
+}
+
+.aurora i:nth-child(3) {
+  animation-name: aurora-drift-c;
+  animation-duration: 44s;
+}
+
+/* ---------- Logo orb ---------- */
+
+/* The rings are positioned against the orb, so the orb needs a positioned box. */
+.logo-orb {
+  position: relative;
+}
+
+.logo-orb img {
+  will-change: transform;
+  animation: orb-float 6s var(--ease-in-out) infinite;
+}
+
+.logo-orb__ring {
+  position: absolute;
+  inset: -10%;
+  border-radius: 50%;
+  border: 1px dashed var(--brand-300);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: orb-spin 24s linear infinite;
+}
+
+.logo-orb__ring--2 {
+  inset: -20%;
+  border-color: var(--gold-400);
+  opacity: 0.35;
+  animation-duration: 36s;
+  animation-direction: reverse;
+}
+
+/* ---------- Award cards ---------- */
+
+/* The shadow lives on a separate layer, so hover changes opacity only. */
+.award-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  box-shadow: 0 28px 56px -22px rgba(12, 42, 78, 0.38), 0 4px 12px rgba(12, 42, 78, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+/* Tilt, lift, and press apply only after the reveal is done, so they do not fight the reveal transform. */
+.js .award-card[data-reveal].is-done {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px)) scale(var(--press, 1));
+  transition: transform var(--dur-base) var(--ease-out);
+  transition-delay: 0s;
+}
+
+.js .award-card[data-reveal].is-done:active {
+  --press: 0.97;
+}
+
+.award-card__go {
+  display: inline-flex;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .js .award-card[data-reveal].is-done:hover {
+    --lift: -4px;
+  }
+
+  .award-card:hover::after,
+  .award-card:focus-visible::after {
+    opacity: 1;
+  }
+
+  .award-card:hover .award-card__go,
+  .award-card:focus-visible .award-card__go {
+    transform: translateX(4px);
+  }
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn--primary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.btn--primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translateX(-100%);
+  transition: transform var(--dur-slow) var(--ease-out);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover::before {
+    transform: translateX(100%);
+  }
+}
+
+
+/* ---------- Criteria bars ---------- */
+
+.js .criterion__bar > i {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.js .criteria.is-in .criterion__bar > i {
+  animation: bar-grow var(--dur-page) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* ---------- Scores and progress ---------- */
+
+.rating__option input:checked + .rating__dot {
+  animation: dot-pop var(--dur-base) var(--ease-spring);
+}
+
+.score-total__bar > i {
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+@property --p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.progress__ring {
+  transition: --p var(--dur-slow) var(--ease-out);
+}
+
+/* ---------- Nominee rows and award tabs ---------- */
+
+.nominee,
+.award-tab {
+  animation: row-in var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 50ms);
+}
+
+/* ---------- Feedback ---------- */
+
+.glass.is-shaking {
+  animation: shake 320ms var(--ease-out);
+}
+
+.glass.is-pulsing {
+  animation: glow-pulse var(--dur-slow) var(--ease-out);
+}
+
+/* ---------- Toasts ---------- */
+
+.toast {
+  animation: toast-in var(--dur-slow) var(--ease-out) both;
+}
+
+.toast.is-leaving {
+  animation: toast-out var(--dur-base) var(--ease-out) both;
+}
+
+/* ---------- Winner: gold presentation ---------- */
+
+/* Angle of the rotating gold border. Registered so the gradient can turn smoothly. */
+@property --gold-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.winner.is-revealing {
+  animation: winner-in var(--dur-page) var(--ease-spring) both;
+}
+
+.winner.is-revealing .winner__seal {
+  animation: seal-in var(--dur-page) var(--ease-out) both;
+}
+
+/* The name wipes in once, then the gold sheen loops across it. Both run on the same element. */
+.winner.is-revealing .winner__name {
+  animation: name-in var(--dur-slow) var(--ease-out) 350ms both, winner-sheen 4.5s linear 0.9s infinite;
+}
+
+.winner.is-revealing .winner__score {
+  animation: fade-in var(--dur-slow) var(--ease-out) 800ms both;
+}
+
+/* Gold gradient border, about 1.5px. The gradient turns continuously. */
+.winner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--gold-angle), var(--gold-300), var(--gold-600), var(--gold-200), var(--gold-500), var(--gold-300));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  animation: winner-ring 14s linear infinite;
+}
+
+/* Gentle float of the seal. The float sits on the wrapper, so it does not clash with seal-in on the image. */
+.winner__stage {
+  animation: winner-float 5s var(--ease-in-out) infinite alternate;
+}
+
+/* Ray burst behind the seal. Only this layer and the card glow carry will-change. */
+.winner__stage::before {
+  will-change: transform;
+  animation: winner-rays 24s linear infinite;
+}
+
+/* Breathing glow: opacity of a pseudo-element, never box-shadow. It sits inside the card, behind the text. */
+.winner__burst::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 22%, rgba(227, 181, 74, 0.28), rgba(227, 181, 74, 0) 62%);
+  opacity: 0.5;
+  will-change: opacity;
+  animation: winner-glow 4s var(--ease-in-out) infinite alternate;
+  pointer-events: none;
+}
+
+/* Confetti stream. motion.js creates a fixed pool of spans once. Each span sets --c, --d, --delay, --drift, --spin, and left. */
+.confetti {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--c, var(--gold-400));
+  opacity: 0;
+  animation: confetti-fall var(--d, 6s) linear var(--delay, 0s) infinite;
+}
+
+.confetti--streamer {
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.confetti--spark {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+/* Pause control (WCAG 2.2.2) and off-screen stop. Both set animation-play-state. !important stops the reveal and button shorthands from resetting it. */
+.winner.is-paused,
+.winner.is-paused *,
+.winner.is-paused *::before,
+.winner.is-paused *::after,
+.winner.is-paused::before,
+.winner.is-paused::after,
+.winner.is-offscreen,
+.winner.is-offscreen *,
+.winner.is-offscreen *::before,
+.winner.is-offscreen *::after,
+.winner.is-offscreen::before,
+.winner.is-offscreen::after {
+  animation-play-state: paused !important;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes view-rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes aurora-drift-a {
+  from { transform: translate3d(-3%, -2%, 0) scale(1) rotate(0deg); }
+  to { transform: translate3d(4%, 3%, 0) scale(1.08) rotate(6deg); }
+}
+
+@keyframes aurora-drift-b {
+  from { transform: translate3d(3%, 2%, 0) scale(1.04) rotate(-4deg); }
+  to { transform: translate3d(-4%, -3%, 0) scale(0.97) rotate(5deg); }
+}
+
+@keyframes aurora-drift-c {
+  from { transform: translate3d(-2%, 3%, 0) scale(0.98) rotate(3deg); }
+  to { transform: translate3d(3%, -4%, 0) scale(1.06) rotate(-6deg); }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes orb-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes dot-pop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  35% { transform: translateX(5px); }
+  55% { transform: translateX(-3px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(29, 100, 180, 0); }
+  35% { box-shadow: 0 0 0 6px rgba(29, 100, 180, 0.2), 0 0 28px rgba(90, 159, 224, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(29, 100, 180, 0); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(18px); }
+}
+
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes winner-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes seal-in {
+  from { opacity: 0; transform: rotate(-180deg) scale(0.4); }
+  to { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+@keyframes name-in {
+  from {
+    opacity: 0;
+    clip-path: inset(-20% 100% -30% -20%);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(-20% -20% -30% -20%);
+    transform: none;
+  }
+}
+
+/* Sheen: one pass across the name in the first 60 percent, then a rest. The fill repeats every half width, so 100% and 0% look the same. */
+@keyframes winner-sheen {
+  0% { background-position: 100% 50%; }
+  60%, 100% { background-position: 0% 50%; }
+}
+
+@keyframes winner-ring {
+  to { --gold-angle: 360deg; }
+}
+
+@keyframes winner-rays {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes winner-float {
+  from { transform: translateY(0); }
+  to { transform: translateY(-6px); }
+}
+
+@keyframes winner-glow {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+/* Confetti falls from just above the card top to just below its bottom. cqh is the height of .winner__burst. Peak opacity is 0.85. */
+@keyframes confetti-fall {
+  0% { opacity: 0; transform: translate3d(0, -8cqh, 0) rotate(0deg); }
+  12% { opacity: 0.85; }
+  85% { opacity: 0.85; }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift, 0px), 108cqh, 0) rotate(var(--spin, 360deg));
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  main {
+    animation-name: fade-in;
+  }
+
+  .aurora {
+    transform: none;
+  }
+
+  .aurora i,
+  .logo-orb img,
+  .logo-orb__ring {
+    animation: none;
+  }
+
+  .js .award-card[data-reveal].is-done {
+    transform: none;
+  }
+
+  .award-card:hover .award-card__go,
+  .award-card:focus-visible .award-card__go {
+    transform: none;
+  }
+
+  .btn--primary::before {
+    display: none;
+  }
+
+  .js [data-reveal] {
+    transform: none;
+  }
+
+  .js [data-reveal].is-in {
+    transition: opacity var(--dur-slow) var(--ease-out);
+    transition-delay: 0s;
+  }
+
+  .js .criterion__bar > i {
+    transform: none;
+  }
+
+  .js .criteria.is-in .criterion__bar > i {
+    animation: none;
+  }
+
+  .rating__option input:checked + .rating__dot {
+    animation: none;
+  }
+
+  .nominee,
+  .award-tab {
+    animation: fade-in var(--dur-base) var(--ease-out) both;
+    animation-delay: 0s;
+  }
+
+  .glass.is-shaking,
+  .glass.is-pulsing {
+    animation: none;
+  }
+
+  .toast {
+    animation: fade-in var(--dur-base) var(--ease-out) both;
+  }
+
+  .toast.is-leaving {
+    animation: fade-out var(--dur-fast) var(--ease-out) both;
+  }
+
+  .winner.is-revealing {
+    animation: fade-in var(--dur-page) var(--ease-out) both;
+  }
+
+  .winner.is-revealing .winner__seal,
+  .winner.is-revealing .winner__name,
+  .winner.is-revealing .winner__score {
+    animation: fade-in var(--dur-slow) var(--ease-out) both;
+  }
+
+  .winner::after,
+  .winner__stage,
+  .winner__stage::before,
+  .winner__burst::before {
+    animation: none;
+  }
+
+  .confetti,
+  #winner-pause {
+    display: none;
+  }
+}

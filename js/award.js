@@ -1,0 +1,143 @@
+import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js';
+import { NURSES, ATTENDANTS } from './staff.js';
+import { getState, nominate, eligibleFor } from './api.js';
+import { el, $, initShell, toast, setBusy, displayName } from './ui.js';
+
+const award = awardById(new URLSearchParams(location.search).get('id'));
+if (!award) location.replace('index.html#awards');
+
+const isVote = award?.type === 'votes';
+
+function renderHero() {
+  const index = AWARDS.indexOf(award);
+  document.title = `${award.title} | Nephrology Nurses Week 2026`;
+  $('#award-group').textContent = GROUPS[award.group].label;
+  $('#award-title').textContent = award.title;
+  $('#award-coverage').textContent = `Coverage: ${award.coverage}`;
+  $('#award-type').textContent = isVote ? 'Decided by votes' : 'Scored by the committee';
+  $('#award-blurb').textContent = award.blurb;
+  $('#award-index').textContent = String(index + 1).padStart(2, '0');
+
+  const prev = AWARDS[(index - 1 + AWARDS.length) % AWARDS.length];
+  const next = AWARDS[(index + 1) % AWARDS.length];
+  for (const [sel, a] of [['#pager-prev', prev], ['#pager-next', next]]) {
+    $(sel).href = `award.html?id=${a.id}`;
+    $(`${sel} b`).textContent = a.title;
+  }
+}
+
+function renderCriteria() {
+  $('#criteria-list').replaceChildren(...award.criteria.map((cr, i) => el('li', { class: 'criterion', style: `--i:${i}` },
+    el('span', { class: 'criterion__label', text: cr.label }),
+    el('span', { class: 'criterion__weight', text: `${cr.weight}%` }),
+    el('span', { class: 'criterion__bar', 'aria-hidden': 'true' }, el('i', { style: `--w:${cr.weight}` })),
+  )));
+  $('#criteria-note').textContent = isVote
+    ? 'One name gives one vote for this award. The nominee with the most valid votes receives the award.'
+    : `Each evaluator rates every criterion from 1 (${RATING_SCALE[4].label}) to 5 (${RATING_SCALE[0].label}). A rating of 5 earns the full weight, so the highest total is 100. The final score is the average of all evaluators.`;
+}
+
+function renderForm() {
+  const eligible = eligibleFor(award);
+  $('#nominee').append(...eligible.map((name) => el('option', { value: name, text: name })));
+  $('#nominee-label').textContent = isVote ? 'Your vote' : `Nominee (${GROUPS[award.group].noun})`;
+  $('#nominate-title').textContent = isVote ? 'Vote' : 'Nominate';
+  $('#nominate-submit').textContent = isVote ? 'Send vote' : 'Send nomination';
+  $('#reason-field').hidden = isVote;
+
+  if (award.voter === 'patient') {
+    $('#nominator-label').textContent = 'Your name (patient)';
+    $('#nominator-hint').textContent = 'Only the committee sees your name. It is used to count one vote for each patient.';
+    $('#nominator').removeAttribute('list');
+  } else {
+    $('#nominator-hint').textContent = 'Only the committee sees who nominated.';
+    $('#staff-names').append(...[...NURSES, ...ATTENDANTS].map((name) => el('option', { value: name })));
+  }
+
+  $('#nominate-form').addEventListener('submit', onSubmit);
+}
+
+function renderNominees(list) {
+  const rows = [...list].sort((a, b) => a.nominee.localeCompare(b.nominee));
+  $('#nominees-title').textContent = isVote ? 'Names with votes' : 'Nominees so far';
+  $('#nominee-list').replaceChildren(...(rows.length
+    ? rows.map((r, i) => el('li', { class: 'nominee', style: `--i:${i}` },
+      el('span', { class: 'nominee__avatar', 'aria-hidden': 'true', text: r.nominee.charAt(0) }),
+      el('span', { class: 'nominee__name', text: displayName(r.nominee) }),
+      // Vote counts stay hidden until the committee publishes, so the vote stays fair.
+      isVote ? null : el('span', { class: 'nominee__count', text: `${r.count} ${r.count === 1 ? 'nomination' : 'nominations'}` }),
+    ))
+    : [el('li', { class: 'nominee nominee--empty', text: isVote ? 'No vote yet. Yours can be the first.' : 'No nominee yet. Yours can be the first.' })]));
+}
+
+function renderWinner(winners) {
+  const rows = winners && winners[award.id];
+  const box = $('#winner');
+  if (!rows || !rows.length) { box.hidden = true; return; }
+  $('#winner-title').textContent = rows.length > 1 ? 'Awardees (tie)' : 'Awardee';
+  $('#winner-names').replaceChildren(...rows.map((r) => el('h2', { class: 'winner__name', text: displayName(r.nominee) })));
+  $('#winner-score').textContent = isVote
+    ? `${rows[0].value} valid ${rows[0].value === 1 ? 'vote' : 'votes'}`
+    : `Final score ${rows[0].value.toFixed(2)} of 100`;
+  box.hidden = false;
+  const play = () => box.dispatchEvent(new CustomEvent('winner:reveal', { bubbles: true }));
+  $('#winner-replay').onclick = play;
+  requestAnimationFrame(play);
+  // The award is decided, so the form closes.
+  $('.nominate').hidden = true;
+  $('.award-layout').classList.add('is-closed');
+}
+
+async function onSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = $('#nominate-submit');
+  const msg = $('#form-msg');
+  msg.textContent = '';
+  const idle = button.textContent;
+  setBusy(button, true, 'Sending');
+  try {
+    const state = await nominate({
+      awardId: award.id,
+      nominator: form.nominator.value,
+      nominee: form.nominee.value,
+      reason: form.reason.value,
+    });
+    renderNominees(state.nominees[award.id] || []);
+    // Keep the name, so a second nomination for another award needs no retyping.
+    form.nominee.value = '';
+    form.reason.value = '';
+    toast(isVote ? 'Vote received. Thank you.' : 'Nomination received. Thank you.', 'success');
+    form.dispatchEvent(new CustomEvent('form:success', { bubbles: true }));
+  } catch (error) {
+    msg.textContent = error.message === 'Failed to fetch'
+      ? 'No connection to the server. Check the internet and send again.'
+      : error.message;
+    form.dispatchEvent(new CustomEvent('form:error', { bubbles: true }));
+  } finally {
+    setBusy(button, false, idle);
+  }
+}
+
+async function load() {
+  const list = $('#nominee-list');
+  list.replaceChildren(el('li', { class: 'nominee nominee--loading', text: 'Loading nominees' }));
+  try {
+    const state = await getState();
+    renderNominees(state.nominees[award.id] || []);
+    renderWinner(state.winners);
+  } catch {
+    list.replaceChildren(el('li', { class: 'nominee nominee--error' },
+      'The list did not load. ',
+      el('button', { class: 'link-btn', type: 'button', onclick: load, text: 'Try again' }),
+    ));
+  }
+}
+
+if (award) {
+  renderHero();
+  renderCriteria();
+  renderForm();
+  initShell();
+  load();
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Results | Nephrology Nurses Week 2026</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#fafcff">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Instrument+Sans:wght@400..700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/motion.css">
+</head>
+<body class="page page--results">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-nav glass">
+    <a class="brand" href="index.html">
+      <img class="brand__logo" src="assets/logo-192.webp" width="44" height="44" alt="">
+      <span class="brand__text"><b>Nephrology Nurses Week</b><small>Awards 2026</small></span>
+    </a>
+    <nav aria-label="Main">
+      <a href="index.html">Awards</a>
+      <a href="evaluate.html">Committee</a>
+      <a href="results.html">Results</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="gate glass" id="gate" aria-labelledby="gate-title" data-reveal>
+      <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
+      <h1 id="gate-title">Results</h1>
+      <p class="lede">The tally is for the selection committee. Enter the committee PIN.</p>
+      <form id="gate-form" novalidate>
+        <div class="field">
+          <label for="pin">Committee PIN</label>
+          <input id="pin" name="pin" type="password" autocomplete="off" maxlength="64" required>
+        </div>
+        <p class="form-msg" id="gate-msg" role="alert"></p>
+        <button class="btn btn--primary btn--block" type="submit" id="gate-submit">Open the tally</button>
+      </form>
+    </section>
+
+    <section class="results" id="results" hidden>
+      <header class="results__head">
+        <div>
+          <p class="eyebrow">Selection committee</p>
+          <h1 id="results-title" tabindex="-1">Automated tally</h1>
+          <p class="lede" id="results-summary"></p>
+        </div>
+        <div class="publish glass">
+          <p class="publish__state" id="publish-state" aria-live="polite"></p>
+          <button class="btn btn--primary" type="button" id="publish-btn"></button>
+          <button class="btn btn--ghost" type="button" id="refresh-btn">Refresh</button>
+        </div>
+      </header>
+      <div class="results__grid" id="results-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Scores stay with the selection committee.</p>
+  </footer>
+
+  <div class="toast-host" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/results.js"></script>
+  <script type="module" src="js/motion.js"></script>
+</body>
+</html>
