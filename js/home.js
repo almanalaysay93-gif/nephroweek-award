@@ -49,3 +49,17 @@ async function loadCounts() {
 initShell();
 render();
 loadCounts();
+
+// How-to video: start when it scrolls into view, since some browsers block autoplay for off-screen media.
+const howTo = document.querySelector('.video-how video');
+if (howTo) {
+  howTo.muted = true;
+  const start = () => howTo.play().catch(() => {});
+  start();
+  if ('IntersectionObserver' in window) {
+    const watch = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) start();
+    }, { threshold: 0.35 });
+    watch.observe(howTo);
+  }
+}
