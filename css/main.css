@@ -382,3 +382,9 @@ main:focus, h1:focus { outline: none; }
     .bg-photo { opacity: 0.22; }
 }
 .brand__logo { object-fit: contain; background: #ffffff; border-radius: 50%; padding: 3px; }
+
+/* How-to video (Remotion) */
+.video-how { padding: var(--space-6) 0 var(--space-5); }
+.video-how__frame { max-width: 960px; margin: var(--space-5) auto 0; padding: var(--space-3); border-radius: var(--radius-lg); }
+.video-how__frame video { display: block; width: 100%; height: auto; border-radius: var(--radius-md); background: var(--paper-tint); }
+.video-how .section-note { text-align: center; }

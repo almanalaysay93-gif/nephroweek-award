@@ -5,7 +5,7 @@ The award criteria and weights come from the Nephrology Nurses Week 2026 proposa
 
 ## What the app does
 
-- The home page lists 14 awards: 9 nurse awards and 5 nursing attendant awards.
+- The home page lists 14 awards: 9 nurse awards and 5 dialysis technician awards.
 - Each award has one page with the coverage, the criteria, a nomination form, and the nominee list.
 - Each evaluator signs in with a name and the committee PIN.
 - Each evaluator rates each criterion from 1 to 5.
@@ -81,4 +81,4 @@ node --test tests/scoring.test.mjs
 - The committee PIN is one shared secret. Give it to evaluators only.
 - The Apps Script service does not limit wrong PIN attempts, so use a long PIN.
 - The service does not check a nominee name against the staff list. The page makes that check.
-- The nursing attendant awards use the criteria text of the Dialysis Technician awards from the proposal.
+- The dialysis technician awards use the criteria text of the Dialysis Technician awards from the proposal.

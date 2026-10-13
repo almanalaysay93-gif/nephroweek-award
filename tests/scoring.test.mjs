@@ -7,7 +7,7 @@ import { weightedTotal, validRatings, rankScored, rankVotes, nominationError } f
 const hd = awardById('hd-nurse');      // weights 30, 25, 20, 15, 10
 const peer = awardById('peer-choice');
 
-test('catalog: 14 awards, 9 nurse and 5 attendant, every weight set sums to 100', () => {
+test('catalog: 14 awards, 9 nurse and 5 dialysis technician, every weight set sums to 100', () => {
   assert.equal(AWARDS.length, 14);
   assert.equal(AWARDS.filter((a) => a.group === 'nurse').length, 9);
   assert.equal(AWARDS.filter((a) => a.group === 'na').length, 5);
@@ -15,7 +15,7 @@ test('catalog: 14 awards, 9 nurse and 5 attendant, every weight set sums to 100'
   assert.equal(new Set(AWARDS.map((a) => a.id)).size, 14);
 });
 
-test('staff lists: 124 nurses and 43 attendants, no email text', () => {
+test('staff lists: 124 nurses and 43 dialysis technicians, no email text', () => {
   assert.equal(NURSES.length, 124);
   assert.equal(ATTENDANTS.length, 43);
   assert.ok(![...NURSES, ...ATTENDANTS].some((n) => n.includes('@')));

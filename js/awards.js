@@ -12,7 +12,7 @@ export const RATING_SCALE = [
 
 export const GROUPS = {
   nurse: { label: 'Nephrology Nurse Awards', noun: 'nurse' },
-  na: { label: 'Nursing Attendant Awards', noun: 'nursing attendant' },
+  na: { label: 'Dialysis Technician Awards', noun: 'dialysis technician' },
 };
 
 const c = (label, weight) => ({ label, weight });
@@ -125,8 +125,8 @@ export const AWARDS = [
   },
   {
     id: 'na-outstanding', group: 'na', type: 'scored',
-    title: 'Outstanding Nursing Attendant',
-    coverage: 'Nursing Attendants',
+    title: 'Outstanding Dialysis Technician',
+    coverage: 'Dialysis Technicians',
     blurb: 'For overall excellence, professionalism, and commitment to quality dialysis services.',
     criteria: [
       c('Technical competence and proficiency in dialysis procedures', 30),
@@ -139,7 +139,7 @@ export const AWARDS = [
   {
     id: 'na-lifetime', group: 'na', type: 'scored',
     title: 'Lifetime Dedication to Service',
-    coverage: 'Nursing Attendants',
+    coverage: 'Dialysis Technicians',
     blurb: 'For long service that shows dedication, loyalty, and real contributions to the dialysis service.',
     criteria: [
       c('Length and continuity of dedicated service', 30),
@@ -152,7 +152,7 @@ export const AWARDS = [
   {
     id: 'na-patient-care', group: 'na', type: 'scored',
     title: 'Excellence in Patient Care',
-    coverage: 'Nursing Attendants',
+    coverage: 'Dialysis Technicians',
     blurb: 'For safe, compassionate, respectful, and patient-centered dialysis care.',
     criteria: [
       c('Patient safety and adherence to established care protocols', 30),
@@ -165,7 +165,7 @@ export const AWARDS = [
   {
     id: 'na-technical', group: 'na', type: 'scored',
     title: 'Technical Excellence',
-    coverage: 'Nursing Attendants',
+    coverage: 'Dialysis Technicians',
     blurb: 'For technical skill, accuracy, and the standards that keep dialysis safe and efficient.',
     criteria: [
       c('Proficiency in dialysis machine operation and preparation', 30),
@@ -178,8 +178,8 @@ export const AWARDS = [
   {
     id: 'na-extra-miler', group: 'na', type: 'scored',
     title: 'Extra Miler',
-    coverage: 'Nursing Attendants',
-    blurb: 'For the attendant who goes beyond regular duties through initiative and teamwork.',
+    coverage: 'Dialysis Technicians',
+    blurb: 'For the technician who goes beyond regular duties through initiative and teamwork.',
     criteria: [
       c('Willingness to extend assistance beyond usual assigned responsibilities when needed', 30),
       c('Initiative in identifying and addressing service needs', 25),

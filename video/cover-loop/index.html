@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <title>Nephrology Nurses Week cover loop</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; background: #fafcff; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
+      #cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; transform-origin: 50% 40%; }
+      #sweep {
+        position: absolute;
+        top: -10%;
+        left: -80%;
+        width: 60%;
+        height: 120%;
+        background: linear-gradient(105deg, rgba(255,255,255,0) 38%, rgba(255,255,255,0.6) 48%, rgba(227,181,74,0.38) 52%, rgba(255,255,255,0) 62%);
+        mix-blend-mode: soft-light;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="cover" data-start="0" data-width="1280" data-height="720" data-duration="14">
+      <img id="cover" src="assets/banner-1280.webp" alt="" />
+      <div id="sweep"></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // Zoom eases 1.00 to 1.05 and back, so the first and last frame match.
+      tl.fromTo("#cover", { scale: 1 }, { scale: 1.05, duration: 7, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      // Gold sweep crosses fully off-frame on the left and right, then restarts off-frame. The 7 s cycle repeats twice.
+      tl.fromTo("#sweep", { xPercent: 0 }, { xPercent: 300, duration: 7, ease: "power1.inOut", repeat: 1 }, 0);
+      window.__timelines["cover"] = tl;
+    </script>
+  </body>
+</html>
