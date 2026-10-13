@@ -253,6 +253,7 @@ const Outro: React.FC = () => {
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center'}}>
       <div style={{display: 'flex', gap: 56, alignItems: 'center', marginBottom: 36, ...logos}}>
         <Img src={staticFile('spmc-seal-400.webp')} style={{height: 170}} />
+        <Img src={staticFile('cluster-512.webp')} style={{height: 170, width: 170, borderRadius: '50%'}} />
         <Img src={staticFile('skti-logo-512.webp')} style={{height: 170}} />
       </div>
       <div style={{...title, textAlign: 'center', fontFamily: FONT, fontSize: 60, color: C.ink}}>
