@@ -161,14 +161,14 @@ const AwardsCard: React.FC = () => {
 
 const NameCard: React.FC = () => {
   const frame = useCurrentFrame();
-  const full = 'ABEAR, Catherine V.';
+  const full = 'DANGO, Warren G.';
   const typed = Math.floor(
     interpolate(frame, [20, 60], [0, full.length], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}),
   );
   const showList = frame > 64;
   return (
     <Card>
-      <div style={{fontSize: 26, color: C.inkSoft, marginBottom: 10}}>Nominee (dialysis technician)</div>
+      <div style={{fontSize: 26, color: C.inkSoft, marginBottom: 10}}>Nominee (nurse)</div>
       <div
         style={{
           borderRadius: 16,
@@ -193,7 +193,7 @@ const NameCard: React.FC = () => {
           }}
         >
           <div style={{padding: '12px 14px', borderRadius: 10, background: C.brand200, fontWeight: 600}}>
-            ABEAR, Catherine V.
+            DANGO, Warren G.
           </div>
         </div>
       )}
