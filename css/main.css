@@ -389,3 +389,6 @@ main:focus, h1:focus { outline: none; }
 /* Partner logos: one badge size and one design for all three */
 .partners .partner .logo-orb { width: 200px; height: 200px; }
 .partners .partner .logo-orb img { display: block; width: 200px; height: 200px; object-fit: contain; background: transparent; }
+.video-how .section-note { margin: var(--space-5) auto 0; max-width: 60ch; }
+.video-how__frame { margin-bottom: var(--space-6); }
+.video-how .section-note { margin-top: 0; padding-top: var(--space-2); }
