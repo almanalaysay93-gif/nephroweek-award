@@ -18,11 +18,23 @@ function renderHero() {
   $('#award-blurb').textContent = award.blurb;
   $('#award-index').textContent = String(index + 1).padStart(2, '0');
 
-  const prev = AWARDS[(index - 1 + AWARDS.length) % AWARDS.length];
-  const next = AWARDS[(index + 1) % AWARDS.length];
-  for (const [sel, a] of [['#pager-prev', prev], ['#pager-next', next]]) {
-    $(sel).href = `award.html?id=${a.id}`;
-    $(`${sel} b`).textContent = a.title;
+  const pager = $('.award-pager');
+  if (pager) {
+    if (award.id === 'patient-choice') {
+      pager.hidden = true;
+    } else {
+      pager.hidden = false;
+      const pagerAwards = AWARDS.filter((a) => a.id !== 'patient-choice');
+      const pagerIndex = pagerAwards.indexOf(award);
+      if (pagerIndex !== -1) {
+        const prev = pagerAwards[(pagerIndex - 1 + pagerAwards.length) % pagerAwards.length];
+        const next = pagerAwards[(pagerIndex + 1) % pagerAwards.length];
+        for (const [sel, a] of [['#pager-prev', prev], ['#pager-next', next]]) {
+          $(sel).href = `award.html?id=${a.id}`;
+          $(`${sel} b`).textContent = a.title;
+        }
+      }
+    }
   }
 }
 
