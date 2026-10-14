@@ -112,7 +112,7 @@ function showNomineePreview() {
   const name = $('#nominee').value;
   $('#nominee-preview').hidden = !name;
   $('#nominee-preview').replaceChildren(...(name
-    ? [avatar(name, 'staff-avatar staff-avatar--lg'), el('span', { class: 'nominee-preview__name', text: displayName(name) })]
+    ? [avatar(name, 'staff-avatar staff-avatar--xl'), el('span', { class: 'nominee-preview__name', text: displayName(name) })]
     : []));
 }
 

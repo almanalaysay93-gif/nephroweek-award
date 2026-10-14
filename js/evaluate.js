@@ -153,6 +153,10 @@ function nomineeCard(award, nominee, i) {
   return card;
 }
 
+// Re-applies the search and status filter after a score is saved.
+let refilter = () => {};
+$('#score-panel').addEventListener('score:saved', () => refilter());
+
 function renderPanel(focus) {
   const award = AWARDS.find((a) => a.id === current);
   const panel = $('#score-panel');
@@ -173,9 +177,35 @@ function renderPanel(focus) {
         : el('p', { class: 'empty glass', text: 'No vote yet.' }));
   } else {
     const names = nomineesOf(award);
-    panel.replaceChildren(head, ...(names.length
-      ? names.map((n, i) => nomineeCard(award, n, i))
-      : [el('p', { class: 'empty glass', text: 'No nominee yet for this award.' })]));
+    if (!names.length) {
+      panel.replaceChildren(head, el('p', { class: 'empty glass', text: 'No nominee yet for this award.' }));
+    } else {
+      const cards = names.map((n, i) => nomineeCard(award, n, i));
+      const note = el('p', { class: 'notice glass', text: 'No nominee matches this search.' });
+      note.hidden = true;
+      // Filters only hide cards. The cards stay in place, so typing keeps the focus.
+      const applyFilters = () => {
+        const query = normName(search.value);
+        let shown = 0;
+        cards.forEach((card, i) => {
+          const scored = card.classList.contains('is-saved');
+          const match = normName(names[i]).includes(query)
+            && (status.value === 'all' || (status.value === 'scored') === scored);
+          card.hidden = !match;
+          if (match) shown += 1;
+        });
+        note.hidden = shown > 0;
+      };
+      const search = el('input', { type: 'search', class: 'panel-tools__search', placeholder: 'Search by name', 'aria-label': 'Search nominees', oninput: applyFilters });
+      const status = el('select', { class: 'panel-tools__status', 'aria-label': 'Show nominees', onchange: applyFilters },
+        el('option', { value: 'all', text: 'All nominees' }),
+        el('option', { value: 'todo', text: 'Not scored' }),
+        el('option', { value: 'scored', text: 'Scored' }),
+      );
+      refilter = applyFilters;
+      panel.replaceChildren(head, el('div', { class: 'panel-tools' }, search, status), ...cards, note);
+      applyFilters();
+    }
   }
   reveal(panel);
   if (focus) panel.focus({ preventScroll: false });
