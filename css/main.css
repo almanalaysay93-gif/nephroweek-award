@@ -438,6 +438,9 @@ main:focus, h1:focus { outline: none; }
 
 /* Staff photos (js/photos.js). Initials show when there is no photo. */
 .staff-avatar { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: 50% 28%; background: var(--brand-100); border: 2px solid #ffffff; box-shadow: 0 8px 18px -12px var(--brand-800); color: var(--brand-800); font-family: var(--font-display); font-weight: 600; }
+.nominee-preview { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.nominee-preview[hidden] { display: none; }
+.nominee-preview__name { font-weight: 600; color: var(--brand-800); }
 .staff-avatar--sm { width: 32px; height: 32px; font-size: var(--text-sm); }
 .staff-avatar--md { width: 48px; height: 48px; }
 .staff-avatar--lg { width: 72px; height: 72px; font-size: var(--text-2xl); }

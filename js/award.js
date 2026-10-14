@@ -60,6 +60,7 @@ function renderForm() {
   $('#nominate-title').textContent = isVote ? 'Vote' : 'Nominate';
   $('#nominate-submit').textContent = isVote ? 'Send vote' : 'Send nomination';
   $('#reason-field').hidden = isVote;
+  $('#nominee').addEventListener('change', showNomineePreview);
 
   if (award.voter === 'patient') {
     $('#nominator-label').textContent = 'Your name (patient)';
@@ -106,6 +107,15 @@ function renderWinner(winners) {
   $('.award-layout').classList.add('is-closed');
 }
 
+// The photo and name of the chosen nominee, shown under the dropdown.
+function showNomineePreview() {
+  const name = $('#nominee').value;
+  $('#nominee-preview').hidden = !name;
+  $('#nominee-preview').replaceChildren(...(name
+    ? [avatar(name, 'staff-avatar staff-avatar--lg'), el('span', { class: 'nominee-preview__name', text: displayName(name) })]
+    : []));
+}
+
 async function onSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -124,6 +134,7 @@ async function onSubmit(event) {
     renderNominees(state.nominees[award.id] || []);
     // Keep the name, so a second nomination for another award needs no retyping.
     form.nominee.value = '';
+    showNomineePreview();
     form.reason.value = '';
     toast(isVote ? 'Vote received. Thank you.' : 'Nomination received. Thank you.', 'success');
     form.dispatchEvent(new CustomEvent('form:success', { bubbles: true }));
