@@ -230,3 +230,24 @@ test('public state: announced flips at 23 Oct 07:00 Manila, not at voting close'
   assert.equal(st.announced, true);
   assert.equal(st.announceAt, '2026-10-22T23:00:00.000Z');
 });
+
+test('one person per award: spacing and capitals do not duplicate a nominee', () => {
+  const b = makeBackend({
+    Nominations: [
+      HEADERS.Nominations,
+      ['t', 'hd-nurse', 'CRUZ, Ana', 'A', 'r'],
+      ['t', 'hd-nurse', 'cruz,  ana ', 'B', 'r'],
+      ['t', 'hd-nurse', 'LIM, Bo', 'C', 'r'],
+    ],
+  });
+  const rows = plain(b.ctx.rankAward_('hd-nurse', [
+    { awardId: 'hd-nurse', nominee: 'CRUZ, Ana', nominator: 'A' },
+    { awardId: 'hd-nurse', nominee: 'cruz,  ana ', nominator: 'B' },
+    { awardId: 'hd-nurse', nominee: 'LIM, Bo', nominator: 'C' },
+  ], []));
+  assert.equal(rows.length, 2, 'two people, not three rows');
+  const pub = plain(b.ctx.publicView_());
+  assert.equal(pub.nominees['hd-nurse'].length, 2);
+  const cruz = pub.nominees['hd-nurse'].find((r) => /cruz/i.test(r.nominee));
+  assert.equal(cruz.count, 2, 'both nominations count for one person');
+});

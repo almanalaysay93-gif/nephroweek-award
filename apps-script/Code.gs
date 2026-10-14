@@ -154,7 +154,7 @@ function publicView_() {
     var list = award_(r[1]) ? nominees[r[1]] : null;
     if (!list) return;
     for (var i = 0; i < list.length; i++) {
-      if (list[i].nominee === String(r[2])) { list[i].count++; return; }
+      if (norm_(list[i].nominee) === norm_(r[2])) { list[i].count++; return; }
     }
     list.push({ nominee: String(r[2]), count: 1 });
   });
@@ -283,8 +283,10 @@ function rankAward_(id, nominations, scores) {
     return withRanks_(rows, function (r) { return r.value; });
   }
   var names = [];
+  var keys = {};
   nominations.forEach(function (n) {
-    if (n.awardId === id && names.indexOf(n.nominee) < 0) names.push(n.nominee);
+    var key = norm_(n.nominee);
+    if (n.awardId === id && !keys[key]) { keys[key] = true; names.push(n.nominee); }
   });
   rows = names.map(function (nominee) {
     var totals = [];

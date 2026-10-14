@@ -10,7 +10,12 @@ function ranking(award) {
   if (award.type === 'votes') {
     return rankVotes(award, data.nominations).map((r) => ({ ...r, value: r.votes }));
   }
-  const names = [...new Set(data.nominations.filter((n) => n.awardId === award.id).map((n) => n.nominee))];
+  const seen = new Map();
+  data.nominations.filter((n) => n.awardId === award.id).forEach((n) => {
+    const key = normName(n.nominee);
+    if (!seen.has(key)) seen.set(key, n.nominee);
+  });
+  const names = [...seen.values()];
   return rankScored(award, names, data.scores).map((r) => ({ ...r, value: r.average }));
 }
 

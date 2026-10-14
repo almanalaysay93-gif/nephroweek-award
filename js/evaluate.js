@@ -7,8 +7,15 @@ let me = null;      // { evaluator, pin }
 let data = null;    // { nominations, scores }
 let current = AWARDS[0].id;
 
-const nomineesOf = (award) => [...new Set(data.nominations.filter((n) => n.awardId === award.id).map((n) => n.nominee))]
-  .sort((a, b) => a.localeCompare(b));
+// One card per person per award. Spacing and capitals do not make a second person.
+const nomineesOf = (award) => {
+  const seen = new Map();
+  data.nominations.filter((n) => n.awardId === award.id).forEach((n) => {
+    const key = normName(n.nominee);
+    if (!seen.has(key)) seen.set(key, n.nominee);
+  });
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+};
 
 const myScore = (award, nominee) => data.scores.find((s) => s.awardId === award.id
   && normName(s.nominee) === normName(nominee)
