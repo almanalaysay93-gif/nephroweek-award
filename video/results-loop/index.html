@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <title>Gold sunbeams and stars</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <style>
+      html, body { margin: 0; background: #fafcff; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #ffffff 0%, #f3f8fe 50%, #d4e6f9 100%); }
+      #beams { position: absolute; left: 50%; top: 40%; width: 2000px; height: 2000px; margin-left: -1000px; margin-top: -1000px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(227,181,74,0) 0deg, rgba(227,181,74,0.66) 4deg, rgba(255,240,190,0.48) 7deg, rgba(227,181,74,0) 12deg, rgba(227,181,74,0) 30deg); opacity: 0.6; }
+      #sun { position: absolute; left: 50%; top: 40%; width: 760px; height: 760px; margin-left: -380px; margin-top: -380px; border-radius: 50%; background: radial-gradient(circle, rgba(255,250,225,0.95) 0%, rgba(245,205,110,0.62) 30%, rgba(227,181,74,0) 65%); }
+      .star { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; background: radial-gradient(circle, #fffdf2 0%, #e3b54a 35%, rgba(227,181,74,0) 70%); border-radius: 50%; }
+      .star::before, .star::after { content: ""; position: absolute; left: 50%; top: 50%; background: linear-gradient(90deg, rgba(227,181,74,0), #e3b54a, rgba(227,181,74,0)); transform: translate(-50%, -50%); }
+      .star::before { width: 46px; height: 2px; }
+      .star::after { width: 2px; height: 46px; background: linear-gradient(180deg, rgba(227,181,74,0), #e3b54a, rgba(227,181,74,0)); }
+      .star--blue { background: radial-gradient(circle, #f4faff 0%, #5a9fe0 35%, rgba(90,159,224,0) 70%); }
+      .star--blue::before { background: linear-gradient(90deg, rgba(90,159,224,0), #5a9fe0, rgba(90,159,224,0)); }
+      .star--blue::after { background: linear-gradient(180deg, rgba(90,159,224,0), #5a9fe0, rgba(90,159,224,0)); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="results" data-start="0" data-width="1280" data-height="720" data-duration="10">
+      <div id="beams"></div>
+      <div id="sun"></div>
+      <div id="stars"></div>
+    </div>
+    <script>
+      // Deterministic star field: fixed seed, no Math.random, so every render matches.
+      function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+      const rand = rng(20261023);
+      const host = document.getElementById("stars");
+      const stars = [];
+      for (let i = 0; i < 28; i++) {
+        const s = document.createElement("span");
+        s.className = "star" + (i % 5 === 0 ? " star--blue" : "");
+        const scale = 0.35 + rand() * 0.9;
+        s.style.left = (rand() * 100) + "%";
+        s.style.top = (rand() * 100) + "%";
+        s.style.transform = "scale(" + scale.toFixed(2) + ")";
+        host.appendChild(s);
+        stars.push({ el: s, delay: rand() * 4.5, base: scale });
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      // Sunbeams make one full turn in 10 s, so the last frame matches the first.
+      tl.fromTo("#beams", { rotation: 0 }, { rotation: 360, duration: 10, ease: "none" }, 0);
+      // Sun core breathes in and back out.
+      tl.fromTo("#sun", { scale: 0.92, opacity: 0.75 }, { scale: 1.06, opacity: 1, duration: 5, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      // Stars twinkle: brightness and size rise and fall, staggered from the seed.
+      stars.forEach(function (p) {
+        tl.fromTo(p.el, { opacity: 0.25, scale: p.base * 0.7 }, { opacity: 1, scale: p.base * 1.15, duration: 2.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, p.delay);
+      });
+      window.__timelines["results"] = tl;
+    </script>
+  </body>
+</html>

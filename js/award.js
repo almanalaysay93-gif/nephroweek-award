@@ -57,7 +57,9 @@ function renderForm() {
   $('#nominate-form').addEventListener('submit', onSubmit);
 }
 
+// The public award page no longer lists nominees. The committee sees them on evaluate.html.
 function renderNominees(list) {
+  if (!$('#nominee-list')) return;
   const rows = [...list].sort((a, b) => a.nominee.localeCompare(b.nominee));
   $('#nominees-title').textContent = isVote ? 'Names with votes' : 'Nominees so far';
   $('#nominee-list').replaceChildren(...(rows.length
@@ -119,14 +121,25 @@ async function onSubmit(event) {
   }
 }
 
+// After the close: no nominations or votes. A posted winner already hides the form (renderWinner).
+function renderClosed() {
+  const form = $('#nominate-form');
+  if (!form || $('.nominate').hidden) return;
+  form.hidden = true;
+  $('#nominate-title').textContent = 'Voting closed';
+  form.after(el('p', { class: 'glass notice', text: 'Voting closed on 21 October 2026, 7:00am Manila time. Winners are announced on 23 October 2026, 7:00am Manila time, on this page and on the home page.' }));
+}
+
 async function load() {
   const list = $('#nominee-list');
-  list.replaceChildren(el('li', { class: 'nominee nominee--loading', text: 'Loading nominees' }));
+  if (list) list.replaceChildren(el('li', { class: 'nominee nominee--loading', text: 'Loading nominees' }));
   try {
     const state = await getState();
     renderNominees(state.nominees[award.id] || []);
     renderWinner(state.winners);
+    if (state.closed) renderClosed();
   } catch {
+    if (!list) return;
     list.replaceChildren(el('li', { class: 'nominee nominee--error' },
       'The list did not load. ',
       el('button', { class: 'link-btn', type: 'button', onclick: load, text: 'Try again' }),

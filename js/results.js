@@ -63,6 +63,11 @@ function render() {
   grid.replaceChildren(...AWARDS.map(awardResult));
   reveal(grid);
 
+  const log = data.closeLog;
+  $('#close-info').textContent = 'Voting closes 21 October 2026, 7:00am Manila time. Winners are posted on 23 October 2026, 7:00am Manila time. '
+    + (log
+      ? `Last timer run: ${log.status} at ${new Date(log.at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}. ${log.message}`
+      : 'The timer has not run yet.');
   const live = !!data.winners;
   $('#publish-state').textContent = live
     ? 'Awardees are published. Each award page shows its awardee.'

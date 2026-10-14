@@ -1,0 +1,101 @@
+{
+  "_comment": "Shared ranking cases. Run against js/scoring.js and apps-script/Code.gs. Expected winners are rank-1 rows as [nominee, value].",
+  "cases": [
+    {
+      "name": "scored: highest weighted average wins",
+      "awardId": "hd-nurse",
+      "nominations": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "nominator": "B"}
+      ],
+      "scores": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "evaluator": "E1", "ratings": [5, 5, 5, 5, 5]},
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "evaluator": "E2", "ratings": [3, 3, 3, 3, 3]},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "evaluator": "E1", "ratings": [4, 4, 4, 4, 4]},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "evaluator": "E2", "ratings": [5, 5, 4, 4, 4]}
+      ],
+      "expectWinners": [["LIM, Bo", 85.5]],
+      "expectRanks": [["LIM, Bo", 85.5, 1], ["CRUZ, Ana", 80, 2]]
+    },
+    {
+      "name": "scored: weights apply per criterion",
+      "awardId": "hd-nurse",
+      "nominations": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "nominator": "B"}
+      ],
+      "scores": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "evaluator": "E1", "ratings": [5, 4, 3, 2, 1]},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "evaluator": "E1", "ratings": [1, 2, 3, 4, 5]}
+      ],
+      "expectWinners": [["CRUZ, Ana", 70]],
+      "expectRanks": [["CRUZ, Ana", 70, 1], ["LIM, Bo", 50, 2]]
+    },
+    {
+      "name": "scored: tie at the top posts every tied name",
+      "awardId": "hd-nurse",
+      "nominations": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "nominator": "B"},
+        {"awardId": "hd-nurse", "nominee": "REYES, Ben", "nominator": "C"}
+      ],
+      "scores": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "evaluator": "E1", "ratings": [4, 4, 4, 4, 4]},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "evaluator": "E1", "ratings": [4, 4, 4, 4, 4]},
+        {"awardId": "hd-nurse", "nominee": "REYES, Ben", "evaluator": "E1", "ratings": [3, 3, 3, 3, 3]}
+      ],
+      "expectWinners": [["CRUZ, Ana", 80], ["LIM, Bo", 80]],
+      "expectRanks": [["CRUZ, Ana", 80, 1], ["LIM, Bo", 80, 1], ["REYES, Ben", 60, 3]]
+    },
+    {
+      "name": "scored: nominee with no score gets no winner",
+      "awardId": "hd-nurse",
+      "nominations": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "nominator": "B"}
+      ],
+      "scores": [],
+      "expectWinners": [],
+      "expectRanks": [["CRUZ, Ana", null, null], ["LIM, Bo", null, null]]
+    },
+    {
+      "name": "scored: a damaged ratings cell is ignored, not counted",
+      "awardId": "hd-nurse",
+      "nominations": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "nominator": "B"}
+      ],
+      "scores": [
+        {"awardId": "hd-nurse", "nominee": "CRUZ, Ana", "evaluator": "E1", "ratings": [5, 5, 5, 5, 9]},
+        {"awardId": "hd-nurse", "nominee": "LIM, Bo", "evaluator": "E1", "ratings": [2, 2, 2, 2, 2]}
+      ],
+      "expectWinners": [["LIM, Bo", 40]],
+      "expectRanks": [["LIM, Bo", 40, 1], ["CRUZ, Ana", null, null]]
+    },
+    {
+      "name": "votes: one vote per voter, case and spacing ignored",
+      "awardId": "peer-choice",
+      "nominations": [
+        {"awardId": "peer-choice", "nominee": "CRUZ, Ana", "nominator": "Juan Cruz"},
+        {"awardId": "peer-choice", "nominee": "CRUZ, Ana", "nominator": "juan  cruz "},
+        {"awardId": "peer-choice", "nominee": "LIM, Bo", "nominator": "JUAN CRUZ"},
+        {"awardId": "peer-choice", "nominee": "LIM, Bo", "nominator": "Ana"},
+        {"awardId": "peer-choice", "nominee": "LIM, Bo", "nominator": "Ben"}
+      ],
+      "scores": [],
+      "expectWinners": [["LIM, Bo", 2]],
+      "expectRanks": [["LIM, Bo", 2, 1], ["CRUZ, Ana", 1, 2]]
+    },
+    {
+      "name": "votes: tie at the top posts every tied name",
+      "awardId": "patient-choice",
+      "nominations": [
+        {"awardId": "patient-choice", "nominee": "CRUZ, Ana", "nominator": "A"},
+        {"awardId": "patient-choice", "nominee": "LIM, Bo", "nominator": "B"}
+      ],
+      "scores": [],
+      "expectWinners": [["CRUZ, Ana", 1], ["LIM, Bo", 1]],
+      "expectRanks": [["CRUZ, Ana", 1, 1], ["LIM, Bo", 1, 1]]
+    }
+  ]
+}

@@ -46,11 +46,16 @@
     </section>
 
     <section class="results" id="results" hidden>
+      <video class="results-loop" autoplay muted loop playsinline aria-hidden="true">
+        <source src="assets/results-loop.webm" type="video/webm">
+        <source src="assets/results-loop.mp4" type="video/mp4">
+      </video>
       <header class="results__head">
         <div>
           <p class="eyebrow">Selection committee</p>
           <h1 id="results-title" tabindex="-1">Automated tally</h1>
           <p class="lede" id="results-summary"></p>
+          <p class="lede" id="close-info"></p>
         </div>
         <div class="publish glass">
           <p class="publish__state" id="publish-state" aria-live="polite"></p>

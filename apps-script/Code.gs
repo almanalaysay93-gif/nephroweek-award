@@ -19,6 +19,21 @@ var AWARDS = {
   'na-technical': ['scored', 5], 'na-extra-miler': ['scored', 5]
 };
 
+// Voting closes at 07:00 Manila time on 21 October 2026. The server clock decides.
+var CLOSE_AT = new Date('2026-10-21T07:00:00+08:00');
+var CLOSE_LABEL = '21 October 2026, 7:00am Manila time';
+// Winners are posted on the landing page at 07:00 Manila time on 23 October 2026.
+var ANNOUNCE_AT = new Date('2026-10-23T07:00:00+08:00');
+var ANNOUNCE_LABEL = '23 October 2026, 7:00am Manila time';
+
+// Criterion weights per scored award, in the order of js/awards.js.
+var WEIGHTS = {
+  'hd-nurse': [30, 25, 20, 15, 10], 'pd-nurse': [30, 25, 20, 15, 10], 'nephro-nurse': [30, 25, 20, 15, 10],
+  'team-leader': [25, 25, 20, 15, 15], 'team-player': [30, 25, 20, 15, 10], 'kidney-advocacy': [30, 25, 20, 15, 10],
+  'rising-star': [25, 25, 20, 15, 15], 'na-outstanding': [30, 25, 20, 15, 10], 'na-lifetime': [30, 25, 20, 15, 10],
+  'na-patient-care': [30, 25, 20, 15, 10], 'na-technical': [30, 25, 20, 15, 10], 'na-extra-miler': [30, 25, 20, 15, 10]
+};
+
 var TABS = {
   Nominations: ['Timestamp', 'Award', 'Nominee', 'Nominator', 'Reason'],
   Scores: ['Timestamp', 'Award', 'Nominee', 'Evaluator', 'Ratings'],
@@ -49,6 +64,7 @@ var HANDLERS = {
   state: function () { return publicView_(); },
 
   nominate: function (req) {
+    if (isClosed_(Date.now())) return closed_();
     var n = req.nomination || {};
     var award = award_(n.awardId);
     var nominee = clean_(n.nominee, 80);
@@ -85,12 +101,14 @@ var HANDLERS = {
       scores: rows_('Scores').map(function (r) {
         return { ts: iso_(r[0]), awardId: String(r[1]), nominee: String(r[2]), evaluator: String(r[3]), ratings: parse_(r[4], []) };
       }),
-      winners: winners_()
+      winners: winners_(),
+      closeLog: settingValue_('closeLog')
     };
   },
 
   score: function (req) {
     if (!pinOk_(req.pin)) return fail_('Wrong PIN.');
+    if (isClosed_(Date.now())) return closed_();
     var s = req.score || {};
     var award = award_(s.awardId);
     var evaluator = clean_(s.evaluator, 80);
@@ -144,7 +162,7 @@ function publicView_() {
   Object.keys(AWARDS).forEach(function (id) {
     if (AWARDS[id][0] === 'votes') nominees[id].forEach(function (r) { r.count = null; });
   });
-  return { ok: true, nominees: nominees, winners: winners_() };
+  return { ok: true, nominees: nominees, winners: winners_(), closeAt: CLOSE_AT.toISOString(), closed: isClosed_(Date.now()), announceAt: ANNOUNCE_AT.toISOString(), announced: isAnnounced_(Date.now()) };
 }
 
 function pinOk_(pin) {
@@ -200,3 +218,148 @@ function clean_(s, max) { return String(s || '').replace(/\s+/g, ' ').trim().sli
 function safe_(s) { return /^[=+\-@]/.test(s) ? "'" + s : s; }
 function iso_(d) { return d instanceof Date ? d.toISOString() : String(d); }
 function parse_(s, fallback) { try { return s ? JSON.parse(s) : fallback; } catch (e) { return fallback; } }
+
+// ---- Automatic close (see docs/plans/2026-10-14-voting-close-design.md) ----
+
+function isClosed_(nowMs) { return nowMs >= CLOSE_AT.getTime(); }
+function isAnnounced_(nowMs) { return nowMs >= ANNOUNCE_AT.getTime(); }
+function closed_() { return fail_('Voting is closed. Winners are announced on ' + ANNOUNCE_LABEL + '.'); }
+
+function settingValue_(key) {
+  var rows = rows_('Settings');
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i][0] === key) return parse_(rows[i][1], null);
+  }
+  return null;
+}
+
+function logClose_(status, message) {
+  setSetting_('closeLog', JSON.stringify({ at: new Date().toISOString(), status: status, message: message }));
+}
+
+// Same rules as js/scoring.js. tests/close.test.mjs runs both on shared cases.
+function round2_(n) { return Math.round(n * 100) / 100; }
+
+function weightedTotal_(ratings, weights) {
+  if (!Array.isArray(ratings) || ratings.length !== weights.length) return null;
+  var sum = 0;
+  for (var i = 0; i < ratings.length; i++) {
+    var r = ratings[i];
+    if (!(r === Math.floor(r) && r >= 1 && r <= 5)) return null;
+    sum += (r / 5) * weights[i];
+  }
+  return round2_(sum);
+}
+
+function withRanks_(rows, key) {
+  var rank = 0;
+  var prev;
+  rows.forEach(function (row, i) {
+    var v = key(row);
+    if (v === null || v === undefined) { row.rank = null; return; }
+    if (v !== prev) { rank = i + 1; prev = v; }
+    row.rank = rank;
+  });
+  return rows;
+}
+
+// nominations: [{awardId, nominee, nominator}], scores: [{awardId, nominee, evaluator, ratings}]
+function rankAward_(id, nominations, scores) {
+  var award = AWARDS[id];
+  var rows;
+  if (award[0] === 'votes') {
+    var seen = new Map();
+    var counts = new Map();
+    nominations.forEach(function (n) {
+      if (n.awardId !== id) return;
+      var voter = norm_(n.nominator);
+      if (seen.has(voter)) return;
+      seen.set(voter, true);
+      counts.set(n.nominee, (counts.get(n.nominee) || 0) + 1);
+    });
+    rows = [];
+    counts.forEach(function (votes, nominee) { rows.push({ nominee: nominee, value: votes }); });
+    rows.sort(function (a, b) { return b.value - a.value || a.nominee.localeCompare(b.nominee); });
+    return withRanks_(rows, function (r) { return r.value; });
+  }
+  var names = [];
+  nominations.forEach(function (n) {
+    if (n.awardId === id && names.indexOf(n.nominee) < 0) names.push(n.nominee);
+  });
+  rows = names.map(function (nominee) {
+    var totals = [];
+    scores.forEach(function (s) {
+      if (s.awardId === id && norm_(s.nominee) === norm_(nominee)) {
+        var t = weightedTotal_(s.ratings, WEIGHTS[id]);
+        if (t !== null) totals.push(t);
+      }
+    });
+    var avg = totals.length
+      ? round2_(totals.reduce(function (a, b) { return a + b; }, 0) / totals.length)
+      : null;
+    return { nominee: nominee, value: avg };
+  });
+  rows.sort(function (a, b) {
+    var av = a.value === null ? -1 : a.value;
+    var bv = b.value === null ? -1 : b.value;
+    return bv - av || a.nominee.localeCompare(b.nominee);
+  });
+  return withRanks_(rows, function (r) { return r.value; });
+}
+
+// Winners for every award that has one: [{nominee, value}] for each rank-1 row.
+function computeWinners_() {
+  var nominations = rows_('Nominations').map(function (r) {
+    return { awardId: String(r[1]), nominee: String(r[2]), nominator: String(r[3]) };
+  });
+  var scores = rows_('Scores').map(function (r) {
+    return { awardId: String(r[1]), nominee: String(r[2]), evaluator: String(r[3]), ratings: parse_(r[4], []) };
+  });
+  var out = {};
+  Object.keys(AWARDS).forEach(function (id) {
+    var top = rankAward_(id, nominations, scores).filter(function (r) { return r.rank === 1; });
+    if (top.length) out[id] = top.map(function (r) { return { nominee: r.nominee, value: r.value }; });
+  });
+  return out;
+}
+
+// Time trigger handler. Posts winners for awards not yet published; keeps existing ones.
+function closeAndPublish() {
+  try {
+    return locked_(function () {
+      if (!isAnnounced_(Date.now())) {
+        logClose_('skipped', 'Ran before the announcement time. Nothing posted.');
+        return fail_('Too early.');
+      }
+      var existing = winners_() || {};
+      var computed = computeWinners_();
+      var added = [];
+      Object.keys(computed).forEach(function (id) {
+        if (existing[id]) return;
+        existing[id] = computed[id];
+        added.push(id);
+      });
+      setSetting_('winners', JSON.stringify(existing));
+      logClose_('ok', 'Posted ' + added.length + ' award(s): ' + (added.join(', ') || 'none') + '.');
+      return { ok: true, added: added };
+    });
+  } catch (err) {
+    logClose_('error', String(err));
+    throw err;
+  }
+}
+
+// Run from the Apps Script editor. Returns what closeAndPublish would post. Writes nothing.
+function previewClose() {
+  var preview = computeWinners_();
+  Logger.log(JSON.stringify(preview));
+  return preview;
+}
+
+// Run once from the Apps Script editor. Replaces any earlier close trigger.
+function installCloseTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'closeAndPublish') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('closeAndPublish').timeBased().at(ANNOUNCE_AT).create();
+}

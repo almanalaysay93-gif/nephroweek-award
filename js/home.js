@@ -1,6 +1,10 @@
 import { AWARDS, GROUPS } from './awards.js';
 import { getState } from './api.js';
-import { el, $, initShell, reveal } from './ui.js';
+import { el, $, initShell, reveal, displayName } from './ui.js';
+import { mountRing } from './ring.js';
+
+const CLOSE_LABEL = '21 October 2026, 7:00am Manila time';
+const ANNOUNCE_LABEL = '23 October 2026, 7:00am Manila time';
 
 function awardCard(award, index) {
   return el('a', { class: 'award-card glass', href: `award.html?id=${award.id}`, 'data-reveal': true, 'data-tilt': true },
@@ -31,9 +35,39 @@ function render() {
   reveal(host);
 }
 
+function awardeeCard(award, rows) {
+  return el('a', { class: 'awardee-card glass', href: `award.html?id=${award.id}`, 'data-reveal': true },
+    el('p', { class: 'awardee-card__award', text: award.title }),
+    el('ul', { class: 'awardee-card__names' }, rows.map((r) => el('li', { text: displayName(r.nominee) }))),
+  );
+}
+
+// Winners come from the public state. Ties show every name on one card.
+function renderAwardees({ winners, closed, announced }) {
+  const grid = $('#awardees-grid');
+  const none = $('#awardees-none');
+  const won = AWARDS.filter((a) => winners && winners[a.id] && winners[a.id].length);
+  const cards = won.map((a) => awardeeCard(a, winners[a.id]));
+  // 3D ring when motion is allowed. Reduced-motion visitors keep the flat grid.
+  const ring = mountRing(grid, cards, { label: 'Awardees' });
+  grid.classList.toggle('awardees__grid--ring', ring);
+  if (!ring) grid.replaceChildren(...cards);
+  $('#awardees-note').textContent = announced
+    ? 'Winners of the Nephrology Nurses Week 2026 awards.'
+    : closed
+      ? `Voting closed on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`
+      : `Voting closes on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`;
+  const missing = announced ? AWARDS.filter((a) => !won.includes(a)) : [];
+  none.hidden = missing.length === 0;
+  none.textContent = missing.length ? 'No awardee: ' + missing.map((a) => a.title).join(', ') + '.' : '';
+  reveal(grid);
+}
+
 async function loadCounts() {
   try {
-    const { nominees, winners } = await getState();
+    const state = await getState();
+    const { nominees, winners } = state;
+    renderAwardees(state);
     for (const node of document.querySelectorAll('[data-count]')) {
       const id = node.dataset.count;
       const n = (nominees[id] || []).length;
