@@ -19,6 +19,9 @@ function renderHero() {
   $('#award-index').textContent = String(index + 1).padStart(2, '0');
 
   const pager = $('.award-pager');
+  // The Patient Choice page is for patients, so it hides the links to the other pages.
+  const mainNav = $('.site-nav nav');
+  if (mainNav) mainNav.hidden = award.id === 'patient-choice';
   if (pager) {
     if (award.id === 'patient-choice') {
       pager.hidden = true;
