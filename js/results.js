@@ -2,6 +2,7 @@ import { AWARDS } from './awards.js';
 import { getCommittee, publishWinners } from './api.js';
 import { rankScored, rankVotes, normName } from './scoring.js';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
+import { avatar, setPhotoMap } from './photos.js';
 
 let pin = null;
 let data = null;
@@ -49,7 +50,7 @@ function awardResult(award, i) {
         )),
         el('tbody', {}, rows.map((r) => el('tr', { class: r.rank === 1 ? 'is-top' : null },
           el('td', { text: r.rank ?? 'n/a' }),
-          el('th', { scope: 'row', text: displayName(r.nominee) }),
+          el('th', { scope: 'row' }, el('span', { class: 'result-name' }, avatar(r.nominee, 'staff-avatar staff-avatar--sm'), displayName(r.nominee))),
           el('td', { class: 'num', text: r.value === null ? 'Not scored' : isVote ? r.value : r.value.toFixed(2) }),
           isVote ? null : el('td', { class: 'num', text: r.evaluators }),
         ))))
@@ -82,6 +83,7 @@ function render() {
 
 async function load() {
   data = await getCommittee(pin);
+  setPhotoMap(data.photos);
   render();
 }
 

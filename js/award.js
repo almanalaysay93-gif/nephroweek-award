@@ -2,6 +2,7 @@ import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js';
 import { NURSES, ATTENDANTS } from './staff.js';
 import { getState, nominate, eligibleFor } from './api.js';
 import { el, $, initShell, toast, setBusy, displayName } from './ui.js';
+import { avatar, setPhotoMap } from './photos.js';
 
 const award = awardById(new URLSearchParams(location.search).get('id'));
 if (!award) location.replace('index.html#awards');
@@ -92,7 +93,7 @@ function renderWinner(winners) {
   const box = $('#winner');
   if (!rows || !rows.length) { box.hidden = true; return; }
   $('#winner-title').textContent = rows.length > 1 ? 'Awardees (tie)' : 'Awardee';
-  $('#winner-names').replaceChildren(...rows.map((r) => el('h2', { class: 'winner__name', text: displayName(r.nominee) })));
+  $('#winner-names').replaceChildren(...rows.map((r) => el('div', { class: 'winner__person' }, avatar(r.nominee, 'staff-avatar staff-avatar--xl'), el('h2', { class: 'winner__name', text: displayName(r.nominee) }))));
   $('#winner-score').textContent = isVote
     ? `${rows[0].value} valid ${rows[0].value === 1 ? 'vote' : 'votes'}`
     : `Final score ${rows[0].value.toFixed(2)} of 100`;
@@ -150,6 +151,7 @@ async function load() {
   if (list) list.replaceChildren(el('li', { class: 'nominee nominee--loading', text: 'Loading nominees' }));
   try {
     const state = await getState();
+    setPhotoMap(state.photos);
     renderNominees(state.nominees[award.id] || []);
     renderWinner(state.winners);
     if (state.closed) renderClosed();

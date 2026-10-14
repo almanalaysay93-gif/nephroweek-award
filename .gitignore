@@ -5,3 +5,6 @@ video/*/node_modules/
 video/*/out/
 video/*/renders/
 qr/
+# Staff photo working files: raw downloads, crops, and the sim page (never publish)
+photos/
+__sim_all.html

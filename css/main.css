@@ -435,3 +435,13 @@ main:focus, h1:focus { outline: none; }
 .ring .awardee-card__award { transform: translateZ(28px); color: var(--gold-700); }
 .ring .awardee-card__names { transform: translateZ(58px); font-size: var(--text-2xl); line-height: 1.15; }
 .ring__floor { position: absolute; left: 50%; bottom: 26px; width: min(480px, 64%); height: 44px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(184, 134, 30, 0.3) 0%, rgba(184, 134, 30, 0) 70%); filter: blur(6px); pointer-events: none; }
+
+/* Staff photos (js/photos.js). Initials show when there is no photo. */
+.staff-avatar { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: 50% 28%; background: var(--brand-100); border: 2px solid #ffffff; box-shadow: 0 8px 18px -12px var(--brand-800); color: var(--brand-800); font-family: var(--font-display); font-weight: 600; }
+.staff-avatar--sm { width: 32px; height: 32px; font-size: var(--text-sm); }
+.staff-avatar--md { width: 48px; height: 48px; }
+.staff-avatar--lg { width: 72px; height: 72px; font-size: var(--text-2xl); }
+.staff-avatar--xl { width: 96px; height: 96px; font-size: var(--text-3xl); }
+.awardee-card__names li { display: flex; align-items: center; gap: var(--space-3); }
+.result-name { display: inline-flex; align-items: center; gap: var(--space-2); }
+.winner__person { display: grid; justify-items: center; gap: var(--space-3); }

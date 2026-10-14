@@ -2,6 +2,7 @@ import { AWARDS, GROUPS } from './awards.js';
 import { getState } from './api.js';
 import { el, $, initShell, reveal, displayName } from './ui.js';
 import { mountRing } from './ring.js';
+import { avatar, setPhotoMap } from './photos.js';
 
 const CLOSE_LABEL = '21 October 2026, 7:00am Manila time';
 const ANNOUNCE_LABEL = '23 October 2026, 7:00am Manila time';
@@ -38,7 +39,7 @@ function render() {
 function awardeeCard(award, rows) {
   return el('a', { class: 'awardee-card glass', href: `award.html?id=${award.id}`, 'data-reveal': true },
     el('p', { class: 'awardee-card__award', text: award.title }),
-    el('ul', { class: 'awardee-card__names' }, rows.map((r) => el('li', { text: displayName(r.nominee) }))),
+    el('ul', { class: 'awardee-card__names' }, rows.map((r) => el('li', {}, avatar(r.nominee, 'staff-avatar staff-avatar--lg'), el('span', { text: displayName(r.nominee) })))),
   );
 }
 
@@ -66,6 +67,7 @@ function renderAwardees({ winners, closed, announced }) {
 async function loadCounts() {
   try {
     const state = await getState();
+    setPhotoMap(state.photos);
     const { nominees, winners } = state;
     renderAwardees(state);
     for (const node of document.querySelectorAll('[data-count]')) {

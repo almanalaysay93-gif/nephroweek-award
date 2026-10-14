@@ -37,7 +37,8 @@ var WEIGHTS = {
 var TABS = {
   Nominations: ['Timestamp', 'Award', 'Nominee', 'Nominator', 'Reason'],
   Scores: ['Timestamp', 'Award', 'Nominee', 'Evaluator', 'Ratings'],
-  Settings: ['Key', 'Value']
+  Settings: ['Key', 'Value'],
+  Photos: ['Staff name', 'Drive file ID', 'Override name']
 };
 
 function award_(id) {
@@ -102,6 +103,7 @@ var HANDLERS = {
         return { ts: iso_(r[0]), awardId: String(r[1]), nominee: String(r[2]), evaluator: String(r[3]), ratings: parse_(r[4], []) };
       }),
       winners: winners_(),
+      photos: publicPhotos_(),
       closeLog: settingValue_('closeLog')
     };
   },
@@ -162,7 +164,19 @@ function publicView_() {
   Object.keys(AWARDS).forEach(function (id) {
     if (AWARDS[id][0] === 'votes') nominees[id].forEach(function (r) { r.count = null; });
   });
-  return { ok: true, nominees: nominees, winners: winners_(), closeAt: CLOSE_AT.toISOString(), closed: isClosed_(Date.now()), announceAt: ANNOUNCE_AT.toISOString(), announced: isAnnounced_(Date.now()) };
+  return { ok: true, nominees: nominees, winners: winners_(), photos: publicPhotos_(), closeAt: CLOSE_AT.toISOString(), closed: isClosed_(Date.now()), announceAt: ANNOUNCE_AT.toISOString(), announced: isAnnounced_(Date.now()) };
+}
+
+// Photo links by normalized name. The override name, when set, is the key.
+// Only the Drive file ID is returned, never a name pair or any other staff data.
+function publicPhotos_() {
+  var map = {};
+  rows_('Photos').forEach(function (r) {
+    var id = String(r[1] || '').trim();
+    var key = norm_(r[2] || r[0]);
+    if (id && key && !map[key]) map[key] = id;
+  });
+  return map;
 }
 
 function pinOk_(pin) {

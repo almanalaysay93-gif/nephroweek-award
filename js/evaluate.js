@@ -2,6 +2,7 @@ import { AWARDS, RATING_SCALE } from './awards.js';
 import { getCommittee, saveScore } from './api.js';
 import { normName, weightedTotal, validRatings, rankVotes } from './scoring.js';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
+import { avatar, setPhotoMap } from './photos.js';
 
 let me = null;      // { evaluator, pin }
 let data = null;    // { nominations, scores }
@@ -100,7 +101,7 @@ function nomineeCard(award, nominee, i) {
 
   card.append(
     el('header', { class: 'nominee-score__head' },
-      el('span', { class: 'nominee__avatar', 'aria-hidden': 'true', text: nominee.charAt(0) }),
+      avatar(nominee, 'staff-avatar staff-avatar--md'),
       el('h3', { text: displayName(nominee) }),
       el('span', { class: 'nominee__count', text: `${reasons.length} ${reasons.length === 1 ? 'nomination' : 'nominations'}` }),
     ),
@@ -182,6 +183,7 @@ function renderPanel(focus) {
 
 async function enter(credentials) {
   data = await getCommittee(credentials.pin);
+  setPhotoMap(data.photos);
   me = credentials;
   session.set(me);
   $('#gate').hidden = true;
