@@ -357,6 +357,8 @@ function closeAndPublish() {
       });
       setSetting_('winners', JSON.stringify(existing));
       logClose_('ok', 'Posted ' + added.length + ' award(s): ' + (added.join(', ') || 'none') + '.');
+      // A certificate failure must not undo the posted winners.
+      try { makeAndSendCertificates_(); } catch (err) { logClose_('certificates', String(err)); }
       return { ok: true, added: added };
     });
   } catch (err) {
@@ -378,4 +380,132 @@ function installCloseTrigger() {
     if (t.getHandlerFunction() === 'closeAndPublish') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('closeAndPublish').timeBased().at(ANNOUNCE_AT).create();
+}
+
+// ---- Certificates of award (editable Google Slides, one per winner) ----
+
+var CERT_EVENT = 'Nephrology Nurses Week 2026';
+var CERT_DATE = '23rd day of October, 2026';
+var CERT_RECIPIENT = 'nncluster@spmcdvo.net';
+var CERT_SIGNERS = [
+  { name: 'Janie Bib J. Martel, RN', title: 'Clinical Coordinator/Nurse IV' },
+  { name: 'Darwin E. Peñas, RN, MAN', title: 'Department Head' }
+];
+// Award titles as shown on the site (js/awards.js).
+var AWARD_TITLES = {
+  'hd-nurse': 'Outstanding Hemodialysis Nurse', 'pd-nurse': 'Outstanding Peritoneal Dialysis Nurse',
+  'nephro-nurse': 'Outstanding Nephrology Nurse', 'team-leader': 'Best Team Leader',
+  'team-player': 'Best Team Player', 'kidney-advocacy': 'Kidney Health Advocacy Recognition',
+  'rising-star': 'Rising Star', 'patient-choice': 'Patient Choice', 'peer-choice': 'Peer Choice',
+  'na-outstanding': 'Outstanding Dialysis Technician', 'na-lifetime': 'Lifetime Dedication to Service',
+  'na-patient-care': 'Excellence in Patient Care', 'na-technical': 'Technical Excellence',
+  'na-extra-miler': 'Extra Miler'
+};
+// The site colours from css/tokens.css.
+var CERT_COLORS = { navy: '#123d70', ink: '#0c2a4e', gold: '#cd9b2b', goldDeep: '#94691a', goldLight: '#eccb72', soft: '#3a5270', tint: '#f2f7fd' };
+
+// Run once from the editor. Builds the one-slide template and stores its ID in Settings.
+function createCertificateTemplate() {
+  var pres = SlidesApp.create('Certificate of Award (template)');
+  var slide = pres.getSlides()[0];
+  slide.getPageElements().forEach(function (e) { e.remove(); });
+  var c = CERT_COLORS;
+  certBox_(slide, 0, 0, 720, 405, c.tint, null, 0);
+  certBox_(slide, 18, 18, 684, 369, null, c.gold, 3);
+  certBox_(slide, 26, 26, 668, 353, null, c.goldLight, 1);
+  certText_(slide, 'CERTIFICATE OF AWARD', 60, 52, 600, 44, 30, c.navy, true, 'Fraunces');
+  certText_(slide, '{{EVENT}}', 60, 98, 600, 22, 14, c.soft, false, 'Instrument Sans');
+  certText_(slide, 'This certificate is presented to', 60, 128, 600, 22, 13, c.soft, false, 'Instrument Sans');
+  certText_(slide, '{{NAME}}', 60, 150, 600, 52, 34, c.ink, true, 'Fraunces');
+  certBox_(slide, 260, 210, 200, 2, c.gold, null, 0);
+  certText_(slide, 'for {{AWARD}}', 60, 222, 600, 32, 20, c.goldDeep, true, 'Fraunces');
+  certText_(slide, 'in recognition of outstanding service during {{EVENT}}.', 60, 256, 600, 24, 13, c.soft, false, 'Instrument Sans');
+  certText_(slide, 'Given this {{DATE}}.', 60, 282, 600, 22, 12, c.soft, false, 'Instrument Sans');
+  [[110], [410]].forEach(function (pos, i) {
+    certBox_(slide, pos[0], 322, 200, 1, c.navy, null, 0);
+    certText_(slide, CERT_SIGNERS[i].name, pos[0] - 20, 328, 240, 20, 12, c.ink, true, 'Instrument Sans');
+    certText_(slide, CERT_SIGNERS[i].title, pos[0] - 20, 348, 240, 18, 10, c.soft, false, 'Instrument Sans');
+  });
+  pres.saveAndClose();
+  setSetting_('certTemplateId', pres.getId());
+  return pres.getUrl();
+}
+
+function certBox_(slide, x, y, w, h, fill, border, weight) {
+  var shape = slide.insertShape(SlidesApp.ShapeType.RECTANGLE, x, y, w, h);
+  if (fill) shape.getFill().setSolidFill(fill); else shape.getFill().setTransparent();
+  if (border) { shape.getBorder().getLineFill().setSolidFill(border); shape.getBorder().setWeight(weight); } else shape.getBorder().setTransparent();
+  return shape;
+}
+
+function certText_(slide, text, x, y, w, h, size, color, bold, font) {
+  var box = slide.insertTextBox(text, x, y, w, h);
+  var range = box.getText();
+  range.getTextStyle().setFontFamily(font).setFontSize(size).setBold(bold).setForegroundColor(color);
+  range.getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
+  return box;
+}
+
+// Same rule as displayName() in js/ui.js: "CATOTO, Genevieve U." becomes "Genevieve U. Catoto".
+function certName_(listName) {
+  var parts = String(listName).split(/,\s*/);
+  if (parts.length < 2) return String(listName);
+  var last = parts[0].toLowerCase().replace(/(^|[\s-])\p{L}/gu, function (m) { return m.toUpperCase(); });
+  return parts[1] + ' ' + last;
+}
+
+// One recipient per winner. The key keeps a winner from getting a second certificate.
+function certificateRecipients_(winners) {
+  var out = [];
+  Object.keys(AWARD_TITLES).forEach(function (id) {
+    (winners[id] || []).forEach(function (w) {
+      out.push({ key: id + '|' + norm_(w.nominee), award: AWARD_TITLES[id], name: certName_(w.nominee) });
+    });
+  });
+  return out;
+}
+
+// Makes a certificate for each new winner, then emails the ones not yet sent.
+// Safe to run again: made certificates and sent emails are recorded in Settings.
+function makeAndSendCertificates_() {
+  var templateId = settingValue_('certTemplateId');
+  if (!templateId) return fail_('The certificate template is not set. Run createCertificateTemplate first.');
+  var made = settingValue_('certificates') || {};
+  var sent = settingValue_('certificatesSent') || [];
+  var fresh = certificateRecipients_(winners_() || {}).filter(function (r) { return !made[r.key]; });
+  fresh.forEach(function (r) {
+    var copy = DriveApp.getFileById(templateId).makeCopy('Certificate - ' + r.name + ' - ' + r.award);
+    var pres = SlidesApp.openById(copy.getId());
+    pres.replaceAllText('{{EVENT}}', CERT_EVENT);
+    pres.replaceAllText('{{NAME}}', r.name);
+    pres.replaceAllText('{{AWARD}}', r.award);
+    pres.replaceAllText('{{DATE}}', CERT_DATE);
+    pres.saveAndClose();
+    var pdf = DriveApp.createFile(copy.getAs(MimeType.PDF));
+    made[r.key] = { award: r.award, name: r.name, slideUrl: copy.getUrl(), pdfId: pdf.getId() };
+  });
+  // Save before sending, so a failed email does not make duplicate certificates on the next run.
+  if (fresh.length) setSetting_('certificates', JSON.stringify(made));
+  var pending = Object.keys(made).filter(function (k) { return sent.indexOf(k) < 0; });
+  if (!pending.length) return { ok: true, sent: 0 };
+  MailApp.sendEmail({
+    to: CERT_RECIPIENT,
+    subject: 'Certificates of award: ' + CERT_EVENT,
+    body: 'Editable certificates (Google Slides) with PDF copies attached.\n\n' + pending.map(function (k) {
+      return made[k].award + ' - ' + made[k].name + '\n' + made[k].slideUrl;
+    }).join('\n\n'),
+    attachments: pending.map(function (k) { return DriveApp.getFileById(made[k].pdfId).getBlob(); })
+  });
+  setSetting_('certificatesSent', JSON.stringify(sent.concat(pending)));
+  return { ok: true, sent: pending.length };
+}
+
+// Button in the sheet: Awards > Send certificates now.
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Awards').addItem('Send certificates now', 'sendCertificatesNow').addToUi();
+}
+
+function sendCertificatesNow() {
+  var result = locked_(makeAndSendCertificates_);
+  SpreadsheetApp.getUi().alert(result.ok ? 'Certificates sent: ' + result.sent + '.' : result.error);
 }
