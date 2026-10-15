@@ -55,6 +55,17 @@ function makeBackend(initial = {}) {
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ setMimeType() { return t; } }) },
     Logger: { log() {} },
+    // No-op Drive, Slides, and Gmail for the certificate step that runs after posting.
+    DriveApp: {
+      getFileById: () => ({
+        makeCopy: () => ({ getId: () => 'copy', getUrl: () => 'url', getAs: () => ({}) }),
+        getBlob: () => ({}),
+      }),
+      createFile: () => ({ getId: () => 'pdf' }),
+    },
+    SlidesApp: { openById: () => ({ replaceAllText() {}, saveAndClose() {} }) },
+    MailApp: { sendEmail() {} },
+    MimeType: { PDF: 'application/pdf' },
     ScriptApp: {
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (t) => { triggers.splice(triggers.indexOf(t), 1); },

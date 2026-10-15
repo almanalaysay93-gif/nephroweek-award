@@ -65,10 +65,9 @@ export function nominationError(n, award, eligible, existing) {
   if (!normName(n.nominator)) return 'Enter your name.';
   if (!eligible.some((e) => normName(e) === normName(n.nominee))) return 'Choose a nominee from the list.';
   if (normName(n.nominator) === normName(n.nominee)) return 'You cannot nominate yourself.';
-  const dup = existing.some((e) => e.awardId === award.id && normName(e.nominator) === normName(n.nominator));
-  if (dup) return award.type === 'votes'
-    ? 'This name has already voted for this award.'
-    : 'This name has already nominated for this award.';
+  // Only a vote is limited to one per name. A scored award allows any number of nominations.
+  const dup = award.type === 'votes' && existing.some((e) => e.awardId === award.id && normName(e.nominator) === normName(n.nominator));
+  if (dup) return 'This name has already voted for this award.';
   if (award.type === 'scored' && String(n.reason || '').trim().replace(/\s+/g, ' ').length < 10) return 'Give a short reason (10 characters or more).';
   return null;
 }

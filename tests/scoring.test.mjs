@@ -81,9 +81,12 @@ test('nominationError: rules', () => {
   assert.match(nominationError({ ...ok, nominator: 'cruz, ana b.' }, hd, eligible, []), /yourself/);
   assert.match(nominationError({ ...ok, reason: 'good' }, hd, eligible, []), /reason/);
   const prior = [{ awardId: 'hd-nurse', nominator: 'SOMEONE  else', nominee: 'REYES, Ben C.' }];
-  assert.match(nominationError(ok, hd, eligible, prior), /already nominated/);
-  // The same person may nominate for a different award.
+  // A scored award has no limit on nominations per name.
+  assert.equal(nominationError(ok, hd, eligible, prior), null);
   assert.equal(nominationError(ok, awardById('pd-nurse'), eligible, prior), null);
+  // A vote is still one per name for each award.
+  const priorVote = [{ awardId: 'peer-choice', nominator: 'SOMEONE  else', nominee: 'REYES, Ben C.' }];
+  assert.match(nominationError(ok, peer, eligible, priorVote), /already voted/);
   // A vote needs no reason.
   assert.equal(nominationError({ ...ok, reason: '' }, peer, eligible, []), null);
 });

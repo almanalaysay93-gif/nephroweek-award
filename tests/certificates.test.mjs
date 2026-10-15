@@ -40,6 +40,16 @@ test('one certificate per winner, ties included, and a name with two awards gets
   assert.equal(recipients[0].name, 'Genevieve U. Catoto');
 });
 
+test('every certificate gets a citation and the template ID is set', () => {
+  const recipients = plain(ctx.certificateRecipients_({ 'hd-nurse': [{ nominee: 'CATOTO, Genevieve U.', value: 1 }] }));
+  assert.equal(recipients[0].citation, 'For clinical skill and patient care that set the standard on the hemodialysis floor');
+  for (const award of AWARDS) {
+    const text = ctx.CERT_CITATIONS[award.id];
+    assert.ok(text && text.startsWith('For ') && !text.endsWith('.'), award.id);
+  }
+  assert.equal(ctx.CERT_TEMPLATE_ID, '1Q0cVE9q4iKW3ZEZDII_fw_2RZfKXwywC');
+});
+
 test('no winners means no certificates', () => {
   assert.deepEqual(plain(ctx.certificateRecipients_({})), []);
 });

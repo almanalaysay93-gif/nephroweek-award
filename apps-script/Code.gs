@@ -79,12 +79,13 @@ var HANDLERS = {
     return locked_(function () {
       var published = winners_();
       if (published && published[n.awardId]) return fail_('This award is closed. The awardee is announced.');
-      var rows = rows_('Nominations');
-      for (var i = 0; i < rows.length; i++) {
-        if (rows[i][1] === n.awardId && norm_(rows[i][3]) === norm_(nominator)) {
-          return fail_(award[0] === 'votes'
-            ? 'This name has already voted for this award.'
-            : 'This name has already nominated for this award.');
+      // Only a vote is limited to one per name. A scored award allows any number of nominations.
+      if (award[0] === 'votes') {
+        var rows = rows_('Nominations');
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i][1] === n.awardId && norm_(rows[i][3]) === norm_(nominator)) {
+            return fail_('This name has already voted for this award.');
+          }
         }
       }
       tab_('Nominations').appendRow([new Date(), n.awardId, safe_(nominee), safe_(nominator), safe_(reason)]);
@@ -387,6 +388,8 @@ function installCloseTrigger() {
 var CERT_EVENT = 'Nephrology Nurses Week 2026';
 var CERT_DATE = '23rd day of October, 2026';
 var CERT_RECIPIENT = 'nncluster@spmcdvo.net';
+// Google Slides template: placeholders {{NAME}}, {{AWARD}}, {{CITATION}}, {{EVENT}}, {{DATE}}.
+var CERT_TEMPLATE_ID = '1Q0cVE9q4iKW3ZEZDII_fw_2RZfKXwywC';
 var CERT_SIGNERS = [
   { name: 'Janie Bib J. Martel, RN', title: 'Clinical Coordinator/Nurse IV' },
   { name: 'Darwin E. Peñas, RN, MAN', title: 'Department Head' }
@@ -400,6 +403,23 @@ var AWARD_TITLES = {
   'na-outstanding': 'Outstanding Dialysis Technician', 'na-lifetime': 'Lifetime Dedication to Service',
   'na-patient-care': 'Excellence in Patient Care', 'na-technical': 'Technical Excellence',
   'na-extra-miler': 'Extra Miler'
+};
+// Citation per award. Each starts with "For" and has no final full stop: the template adds it.
+var CERT_CITATIONS = {
+  'hd-nurse': 'For clinical skill and patient care that set the standard on the hemodialysis floor',
+  'pd-nurse': 'For teaching patients and caregivers well and keeping peritoneal dialysis care continuous',
+  'nephro-nurse': 'For safe, patient-centered nephrology care every shift',
+  'team-leader': 'For sound decisions, coordinated teamwork, and support for the staff',
+  'team-player': 'For being the colleague the team can always count on',
+  'kidney-advocacy': 'For bringing kidney health education and patient advocacy to the community',
+  'rising-star': 'For fast growth, initiative, and strong work as a newly hired nurse',
+  'patient-choice': 'For the trust patients place in their nurse',
+  'peer-choice': 'For the trust colleagues place in their nurse',
+  'na-outstanding': 'For overall excellence, professionalism, and commitment to quality dialysis services',
+  'na-lifetime': 'For long service, dedication, and real contributions to the dialysis service',
+  'na-patient-care': 'For safe, compassionate, respectful, and patient-centered dialysis care',
+  'na-technical': 'For technical skill, accuracy, and the standards that keep dialysis safe and efficient',
+  'na-extra-miler': 'For going beyond regular duties through initiative and teamwork'
 };
 // The site colours from css/tokens.css.
 var CERT_COLORS = { navy: '#123d70', ink: '#0c2a4e', gold: '#cd9b2b', goldDeep: '#94691a', goldLight: '#eccb72', soft: '#3a5270', tint: '#f2f7fd' };
@@ -459,7 +479,7 @@ function certificateRecipients_(winners) {
   var out = [];
   Object.keys(AWARD_TITLES).forEach(function (id) {
     (winners[id] || []).forEach(function (w) {
-      out.push({ key: id + '|' + norm_(w.nominee), award: AWARD_TITLES[id], name: certName_(w.nominee) });
+      out.push({ key: id + '|' + norm_(w.nominee), award: AWARD_TITLES[id], citation: CERT_CITATIONS[id], name: certName_(w.nominee) });
     });
   });
   return out;
@@ -468,8 +488,7 @@ function certificateRecipients_(winners) {
 // Makes a certificate for each new winner, then emails the ones not yet sent.
 // Safe to run again: made certificates and sent emails are recorded in Settings.
 function makeAndSendCertificates_() {
-  var templateId = settingValue_('certTemplateId');
-  if (!templateId) return fail_('The certificate template is not set. Run createCertificateTemplate first.');
+  var templateId = CERT_TEMPLATE_ID;
   var made = settingValue_('certificates') || {};
   var sent = settingValue_('certificatesSent') || [];
   var fresh = certificateRecipients_(winners_() || {}).filter(function (r) { return !made[r.key]; });
@@ -479,6 +498,7 @@ function makeAndSendCertificates_() {
     pres.replaceAllText('{{EVENT}}', CERT_EVENT);
     pres.replaceAllText('{{NAME}}', r.name);
     pres.replaceAllText('{{AWARD}}', r.award);
+    pres.replaceAllText('{{CITATION}}', r.citation);
     pres.replaceAllText('{{DATE}}', CERT_DATE);
     pres.saveAndClose();
     var pdf = DriveApp.createFile(copy.getAs(MimeType.PDF));
