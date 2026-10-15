@@ -96,11 +96,11 @@ test('weights in Code.gs match js/awards.js', () => {
   }
 });
 
-test('gate: open one millisecond before 07:00 Manila, closed at 07:00', () => {
+test('gate: open one millisecond before 12:00 noon Manila, closed at 12:00 noon', () => {
   const b = makeBackend();
   assert.equal(b.ctx.isClosed_(b.close - 1), false);
   assert.equal(b.ctx.isClosed_(b.close), true);
-  assert.equal(b.ctx.CLOSE_AT.toISOString(), '2026-10-20T23:00:00.000Z');
+  assert.equal(b.ctx.CLOSE_AT.toISOString(), '2026-10-19T04:00:00.000Z');
 });
 
 test('gate: writes succeed before close and are refused after', () => {
@@ -124,7 +124,7 @@ test('public state reports closeAt and closed', () => {
   b.clock.now = b.close - 1;
   const pre = plain(b.ctx.publicView_());
   assert.equal(pre.closed, false);
-  assert.equal(pre.closeAt, '2026-10-20T23:00:00.000Z');
+  assert.equal(pre.closeAt, '2026-10-19T04:00:00.000Z');
   b.clock.now = b.close;
   assert.equal(plain(b.ctx.publicView_()).closed, true);
 });
@@ -207,7 +207,7 @@ test('previewClose returns winners and writes nothing', () => {
   assert.equal(settingOf(b.data, 'closeLog'), undefined);
 });
 
-test('installCloseTrigger leaves exactly one trigger at 07:00 Manila', () => {
+test('installCloseTrigger leaves exactly one trigger at 12:00 noon Manila on 23 Oct', () => {
   const b = makeBackend();
   b.ctx.installCloseTrigger();
   b.ctx.installCloseTrigger();
@@ -216,7 +216,7 @@ test('installCloseTrigger leaves exactly one trigger at 07:00 Manila', () => {
   assert.equal(mine[0].when.getTime(), b.ctx.ANNOUNCE_AT.getTime());
 });
 
-test('public state: announced flips at 23 Oct 07:00 Manila, not at voting close', () => {
+test('public state: announced flips at 23 Oct 12:00 noon Manila, not at voting close', () => {
   const b = makeBackend();
   const announce = b.ctx.ANNOUNCE_AT.getTime();
   b.clock.now = b.close;
@@ -228,7 +228,7 @@ test('public state: announced flips at 23 Oct 07:00 Manila, not at voting close'
   b.clock.now = announce;
   st = plain(b.ctx.publicView_());
   assert.equal(st.announced, true);
-  assert.equal(st.announceAt, '2026-10-22T23:00:00.000Z');
+  assert.equal(st.announceAt, '2026-10-23T04:00:00.000Z');
 });
 
 test('one person per award: spacing and capitals do not duplicate a nominee', () => {

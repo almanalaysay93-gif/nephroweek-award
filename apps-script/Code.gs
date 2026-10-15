@@ -19,12 +19,12 @@ var AWARDS = {
   'na-technical': ['scored', 5], 'na-extra-miler': ['scored', 5]
 };
 
-// Voting closes at 07:00 Manila time on 21 October 2026. The server clock decides.
-var CLOSE_AT = new Date('2026-10-21T07:00:00+08:00');
-var CLOSE_LABEL = '21 October 2026, 7:00am Manila time';
-// Winners are posted on the landing page at 07:00 Manila time on 23 October 2026.
-var ANNOUNCE_AT = new Date('2026-10-23T07:00:00+08:00');
-var ANNOUNCE_LABEL = '23 October 2026, 7:00am Manila time';
+// Voting closes at 12:00 noon Manila time on 19 October 2026. The server clock decides.
+var CLOSE_AT = new Date('2026-10-19T12:00:00+08:00');
+var CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
+// Winners are posted on the landing page at 12:00 noon Manila time on 23 October 2026.
+var ANNOUNCE_AT = new Date('2026-10-23T12:00:00+08:00');
+var ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
 
 // Criterion weights per scored award, in the order of js/awards.js.
 var WEIGHTS = {

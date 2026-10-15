@@ -4,8 +4,8 @@ import { el, $, initShell, reveal, displayName } from './ui.js';
 import { mountRing } from './ring.js';
 import { avatar, setPhotoMap } from './photos.js';
 
-const CLOSE_LABEL = '21 October 2026, 7:00am Manila time';
-const ANNOUNCE_LABEL = '23 October 2026, 7:00am Manila time';
+const CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
+const ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
 
 function awardCard(award, index) {
   return el('a', { class: 'award-card glass', href: `award.html?id=${award.id}`, 'data-reveal': true, 'data-tilt': true },
