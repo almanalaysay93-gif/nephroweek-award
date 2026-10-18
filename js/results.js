@@ -70,7 +70,7 @@ function render() {
   reveal(grid);
 
   const log = data.closeLog;
-  $('#close-info').textContent = 'Voting closes 19 October 2026, 12:00 noon Manila time. Winners are posted on 23 October 2026, 12:00 noon Manila time. '
+  $('#close-info').textContent = 'Patient Choice voting closes 22 October 2026, 12:00 noon Manila time. Voting for all other awards closes 19 October 2026, 12:00 noon Manila time. Winners are posted on 23 October 2026, 12:00 noon Manila time. '
     + (log
       ? `Last timer run: ${log.status} at ${new Date(log.at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}. ${log.message}`
       : 'The timer has not run yet.');

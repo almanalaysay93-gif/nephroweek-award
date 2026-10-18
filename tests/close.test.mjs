@@ -140,6 +140,43 @@ test('public state reports closeAt and closed', () => {
   assert.equal(plain(b.ctx.publicView_()).closed, true);
 });
 
+test('Patient Choice alone stays open until 22 October at noon Manila', () => {
+  const b = makeBackend();
+  const patientClose = Date.parse('2026-10-22T12:00:00+08:00');
+  for (const id of Object.keys(b.ctx.AWARDS)) {
+    assert.equal(b.ctx.isClosed_(b.close, id), id !== 'patient-choice', id);
+    assert.equal(b.ctx.isClosed_(patientClose - 1, id), id !== 'patient-choice', id);
+    assert.equal(b.ctx.isClosed_(patientClose, id), true, id);
+  }
+  b.clock.now = b.close;
+  const state = plain(b.ctx.publicView_());
+  assert.equal(state.closed, true, 'original deadline remains unchanged');
+  assert.equal(state.closedByAward['patient-choice'], false);
+  assert.equal(state.closedByAward['peer-choice'], true);
+  assert.equal(state.closeAtByAward['patient-choice'], '2026-10-22T04:00:00.000Z');
+  assert.equal(state.closeAtByAward['peer-choice'], state.closeAt);
+  b.clock.now = patientClose;
+  assert.equal(plain(b.ctx.publicView_()).closedByAward['patient-choice'], true);
+});
+
+test('Patient Choice votes succeed during extension and stop at its deadline', () => {
+  const b = makeBackend();
+  const patientClose = Date.parse('2026-10-22T12:00:00+08:00');
+  const nomination = { awardId: 'patient-choice', nominee: 'CRUZ, Ana', nominator: 'Ben Reyes' };
+  b.clock.now = b.close;
+  assert.equal(b.ctx.HANDLERS.nominate({ nomination }).ok, true);
+  const peer = b.ctx.HANDLERS.nominate({ nomination: { ...nomination, awardId: 'peer-choice' } });
+  assert.equal(peer.ok, false);
+  assert.match(peer.error, /Voting is closed/);
+  b.clock.now = patientClose - 1;
+  assert.equal(b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Cora Lim' } }).ok, true);
+  b.clock.now = patientClose;
+  const after = b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Dina Cruz' } });
+  assert.equal(after.ok, false);
+  assert.match(after.error, /Voting is closed/);
+  assert.equal(rowsOf(b.data, 'Nominations').length, 2);
+});
+
 for (const c of VECTORS.cases) {
   test(`ranking parity: ${c.name}`, () => {
     const b = makeBackend();

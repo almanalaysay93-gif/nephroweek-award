@@ -154,7 +154,7 @@ function renderClosed() {
   if (!form || $('.nominate').hidden) return;
   form.hidden = true;
   $('#nominate-title').textContent = 'Voting closed';
-  form.after(el('p', { class: 'glass notice', text: 'Voting closed on 19 October 2026, 12:00 noon Manila time. Winners are announced on 23 October 2026, 12:00 noon Manila time, on this page and on the home page.' }));
+  form.after(el('p', { class: 'glass notice', text: `Voting closed on ${award.id === 'patient-choice' ? '22' : '19'} October 2026, 12:00 noon Manila time. Winners are announced on 23 October 2026, 12:00 noon Manila time, on this page and on the home page.` }));
 }
 
 async function load() {
@@ -165,7 +165,7 @@ async function load() {
     setPhotoMap(state.photos);
     renderNominees(state.nominees[award.id] || []);
     renderWinner(state.winners);
-    if (state.closed) renderClosed();
+    if (state.closedByAward?.[award.id] ?? state.closed) renderClosed();
   } catch {
     if (!list) return;
     list.replaceChildren(el('li', { class: 'nominee nominee--error' },

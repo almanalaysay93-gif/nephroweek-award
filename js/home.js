@@ -44,7 +44,7 @@ function awardeeCard(award, rows) {
 }
 
 // Winners come from the public state. Ties show every name on one card.
-function renderAwardees({ winners, closed, announced }) {
+function renderAwardees({ winners, closed, closedByAward, announced }) {
   const grid = $('#awardees-grid');
   const none = $('#awardees-none');
   const won = AWARDS.filter((a) => winners && winners[a.id] && winners[a.id].length);
@@ -56,8 +56,8 @@ function renderAwardees({ winners, closed, announced }) {
   $('#awardees-note').textContent = announced
     ? 'Winners of the Nephrology Nurses Week 2026 awards.'
     : closed
-      ? `Voting closed on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`
-      : `Voting closes on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`;
+      ? `Voting for other awards closed on ${CLOSE_LABEL}. Patient Choice voting ${closedByAward?.['patient-choice'] ? 'closed' : 'closes'} on 22 October 2026, 12:00 noon Manila time. Winners are announced on ${ANNOUNCE_LABEL}.`
+      : `Patient Choice voting closes on 22 October 2026, 12:00 noon Manila time. Voting for all other awards closes on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`;
   const missing = announced ? AWARDS.filter((a) => !won.includes(a)) : [];
   none.hidden = missing.length === 0;
   none.textContent = missing.length ? 'No awardee: ' + missing.map((a) => a.title).join(', ') + '.' : '';

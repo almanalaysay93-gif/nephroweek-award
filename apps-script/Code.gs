@@ -22,6 +22,8 @@ var AWARDS = {
 // Voting closes at 12:00 noon Manila time on 19 October 2026. The server clock decides.
 var CLOSE_AT = new Date('2026-10-19T12:00:00+08:00');
 var CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
+// Patient Choice has an extended voting deadline; all other awards keep CLOSE_AT.
+var PATIENT_CHOICE_CLOSE_AT = new Date('2026-10-22T12:00:00+08:00');
 // Winners are posted on the landing page at 12:00 noon Manila time on 23 October 2026.
 var ANNOUNCE_AT = new Date('2026-10-23T12:00:00+08:00');
 var ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
@@ -65,8 +67,8 @@ var HANDLERS = {
   state: function () { return publicView_(); },
 
   nominate: function (req) {
-    if (isClosed_(Date.now())) return closed_();
     var n = req.nomination || {};
+    if (isClosed_(Date.now(), n.awardId)) return closed_();
     var award = award_(n.awardId);
     var nominee = clean_(n.nominee, 80);
     var nominator = clean_(n.nominator, 80);
@@ -77,6 +79,7 @@ var HANDLERS = {
     if (norm_(nominee) === norm_(nominator)) return fail_('You cannot nominate yourself.');
     if (award[0] === 'scored' && reason.length < 10) return fail_('Give a short reason (10 characters or more).');
     return locked_(function () {
+      if (isClosed_(Date.now(), n.awardId)) return closed_();
       var published = winners_();
       if (published && published[n.awardId]) return fail_('This award is closed. The awardee is announced.');
       // Only a vote is limited to one per name. A scored award allows any number of nominations.
@@ -165,7 +168,14 @@ function publicView_() {
   Object.keys(AWARDS).forEach(function (id) {
     if (AWARDS[id][0] === 'votes') nominees[id].forEach(function (r) { r.count = null; });
   });
-  return { ok: true, nominees: nominees, winners: winners_(), photos: publicPhotos_(), closeAt: CLOSE_AT.toISOString(), closed: isClosed_(Date.now()), announceAt: ANNOUNCE_AT.toISOString(), announced: isAnnounced_(Date.now()) };
+  var closedByAward = {};
+  var closeAtByAward = {};
+  var now = Date.now();
+  Object.keys(AWARDS).forEach(function (id) {
+    closedByAward[id] = isClosed_(now, id);
+    closeAtByAward[id] = closeAt_(id).toISOString();
+  });
+  return { ok: true, nominees: nominees, winners: winners_(), photos: publicPhotos_(), closedByAward: closedByAward, closeAtByAward: closeAtByAward, closeAt: CLOSE_AT.toISOString(), closed: isClosed_(Date.now()), announceAt: ANNOUNCE_AT.toISOString(), announced: isAnnounced_(Date.now()) };
 }
 
 // Photo links by normalized name. The override name, when set, is the key.
@@ -236,7 +246,8 @@ function parse_(s, fallback) { try { return s ? JSON.parse(s) : fallback; } catc
 
 // ---- Automatic close (see docs/plans/2026-10-14-voting-close-design.md) ----
 
-function isClosed_(nowMs) { return nowMs >= CLOSE_AT.getTime(); }
+function closeAt_(awardId) { return awardId === 'patient-choice' ? PATIENT_CHOICE_CLOSE_AT : CLOSE_AT; }
+function isClosed_(nowMs, awardId) { return nowMs >= closeAt_(awardId).getTime(); }
 function isAnnounced_(nowMs) { return nowMs >= ANNOUNCE_AT.getTime(); }
 function closed_() { return fail_('Voting is closed. Winners are announced on ' + ANNOUNCE_LABEL + '.'); }
 
