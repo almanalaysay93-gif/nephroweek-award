@@ -23,7 +23,7 @@ var AWARDS = {
 var CLOSE_AT = new Date('2026-10-19T12:00:00+08:00');
 var CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
 // Patient Choice has an extended voting deadline; all other awards keep CLOSE_AT.
-var PATIENT_CHOICE_CLOSE_AT = new Date('2026-10-22T12:00:00+08:00');
+var PATIENT_CHOICE_CLOSE_AT = new Date('2026-10-20T12:00:00+08:00');
 // Winners are posted on the landing page at 12:00 noon Manila time on 23 October 2026.
 var ANNOUNCE_AT = new Date('2026-10-23T12:00:00+08:00');
 var ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
