@@ -34,15 +34,19 @@
     <section class="gate glass" id="gate" aria-labelledby="gate-title" data-reveal>
       <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
       <h1 id="gate-title">Committee scoring</h1>
-      <p class="lede">Sign in with your committee username and PIN. Enter your name to identify your scores.</p>
+      <p class="lede">Sign in with your committee username and PIN. Verify your username and PIN, then choose your name to continue your scores.</p>
       <form id="gate-form" novalidate>
         <div class="field">
           <label for="username">Username</label>
           <input id="username" name="username" type="text" autocomplete="username" maxlength="80" required>
         </div>
-        <div class="field">
+        <div class="field" id="evaluator-field" hidden>
           <label for="evaluator">Your name</label>
-          <input id="evaluator" name="evaluator" type="text" autocomplete="name" maxlength="80" required>
+          <select id="evaluator" name="evaluator"><option value="">Choose your name</option></select>
+        </div>
+        <div class="field" id="new-evaluator-field" hidden>
+          <label for="new-evaluator">New evaluator name</label>
+          <input id="new-evaluator" type="text" autocomplete="name" maxlength="80">
         </div>
         <div class="field">
           <label for="pin">Committee PIN</label>
@@ -62,10 +66,15 @@
         </div>
         <div class="progress glass" aria-live="polite">
           <span class="progress__ring" id="progress-ring" aria-hidden="true"></span>
-          <p><b id="progress-done">0</b> of <b id="progress-all">0</b> scored</p>
+          <p><b id="progress-done">0</b> of <b id="progress-all">0</b> scored by you</p>
         </div>
       </header>
 
+      <div class="notice glass">
+        <p id="score-sync-note"></p>
+        <button class="btn" id="refresh-scores" type="button">Refresh saved scores</button>
+        <p id="score-sync-status" role="status"></p>
+      </div>
       <div class="workspace__body">
         <nav class="award-tabs glass" aria-label="Awards">
           <ul id="award-tabs"></ul>
@@ -81,7 +90,7 @@
 
   <div class="toast-host" role="status" aria-live="polite"></div>
 
-  <script type="module" src="js/evaluate.js?v=20261019-score-speed"></script>
+  <script type="module" src="js/evaluate.js?v=20261019-score-sync"></script>
   <script type="module" src="js/motion.js"></script>
 </body>
 </html>

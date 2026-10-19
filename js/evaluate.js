@@ -8,6 +8,8 @@ import { readScoreDraft, writeScoreDraft, clearScoreDraft } from './score-drafts
 let me = null;      // { evaluator, username, pin }
 let data = null;    // { nominations, scores }
 let current = AWARDS[0].id;
+let activeSaves = 0;
+let refreshing = false;
 
 // One card per person per award. Spacing and capitals do not make a second person.
 const nomineesOf = (award) => {
@@ -40,6 +42,8 @@ function progress() {
 
 function renderProgress() {
   const p = progress();
+  const otherEvaluators = [...new Set(data.scores.filter((s) => normName(s.evaluator) !== normName(me.evaluator)).map((s) => s.evaluator))];
+  $('#score-sync-note').textContent = `Progress shown for ${me.evaluator}.` + (otherEvaluators.length ? ` Scores from ${otherEvaluators.join(', ')} are saved separately. Use the same evaluator name to continue earlier scores.` : '');
   $('#progress-done').textContent = p.done;
   $('#progress-all').textContent = p.all;
   $('#progress-ring').style.setProperty('--p', p.all ? p.done / p.all : 0);
@@ -142,6 +146,7 @@ function nomineeCard(award, nominee, i) {
     const idle = button.textContent;
     let success = false;
     saving = true;
+    activeSaves += 1;
     draftKept = writeScoreDraft(me.username, me.evaluator, award.id, nominee, ratings);
     card.querySelectorAll('fieldset').forEach((field) => { field.disabled = true; });
     setBusy(button, true, 'Saving');
@@ -172,6 +177,7 @@ function nomineeCard(award, nominee, i) {
       toast(message, 'error');
     } finally {
       saving = false;
+      activeSaves -= 1;
       card.querySelectorAll('fieldset').forEach((field) => { field.disabled = false; });
       setBusy(button, false, success ? 'Update score' : idle);
       refresh();
@@ -240,8 +246,38 @@ function renderPanel(focus) {
   if (focus) panel.focus({ preventScroll: false });
 }
 
-async function enter(credentials) {
-  data = await getCommittee(credentials.pin, credentials.username);
+
+async function refreshScores(automatic = false) {
+  if (!me || refreshing || activeSaves) return;
+  // Do not replace a form while the evaluator is choosing ratings.
+  if (automatic && $('#score-panel').contains(document.activeElement)) return;
+  refreshing = true;
+  const button = $('#refresh-scores');
+  setBusy(button, true, 'Refreshing');
+  try {
+    const fresh = await getCommittee(me.pin, me.username);
+    if (activeSaves) return; // A save started while this snapshot was loading.
+    if ($('#score-panel').contains(document.activeElement)) return;
+    data = fresh;
+    setPhotoMap(data.photos);
+    renderProgress();
+    renderPanel(false); // Unsent ratings are restored from their device drafts.
+    $('#score-sync-status').textContent = 'Scores refreshed from the server.';
+  } catch (error) {
+    $('#score-sync-status').textContent = 'Could not refresh scores. Your current ratings are still shown.';
+    if (!automatic) toast(error.message, 'error');
+  } finally {
+    refreshing = false;
+    setBusy(button, false, 'Refresh saved scores');
+  }
+}
+$('#refresh-scores').addEventListener('click', () => refreshScores());
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshScores(true);
+});
+
+async function enter(credentials, snapshot) {
+  data = snapshot || await getCommittee(credentials.pin, credentials.username);
   setPhotoMap(data.photos);
   me = credentials;
   session.set(me);
@@ -255,6 +291,21 @@ async function enter(credentials) {
   $('#workspace-title').focus();
 }
 
+let gateSnapshot = null;
+let gateIdentity = null;
+$('#evaluator').addEventListener('change', () => {
+  $('#new-evaluator-field').hidden = $('#evaluator').value !== '__new__';
+});
+for (const id of ['username', 'pin']) {
+  $('#'+id).addEventListener('input', () => {
+    gateSnapshot = null;
+    gateIdentity = null;
+    $('#evaluator-field').hidden = true;
+    $('#new-evaluator-field').hidden = true;
+    $('#gate-submit').textContent = 'Continue';
+  });
+}
+$('#gate-submit').textContent = 'Continue';
 $('#gate-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -262,18 +313,41 @@ $('#gate-form').addEventListener('submit', async (event) => {
   const button = $('#gate-submit');
   msg.textContent = '';
   const username = form.username.value.trim();
+  const pin = form.pin.value;
   if (!username) { msg.textContent = 'Enter your username.'; form.username.focus(); return; }
-  const evaluator = form.evaluator.value.trim().replace(/\s+/g, ' ');
-  if (!evaluator) { msg.textContent = 'Enter your name.'; form.evaluator.focus(); return; }
-  if (!form.pin.value) { msg.textContent = 'Enter the committee PIN.'; form.pin.focus(); return; }
+  if (!pin) { msg.textContent = 'Enter the committee PIN.'; form.pin.focus(); return; }
+  const identity = JSON.stringify([username, pin]);
   setBusy(button, true, 'Signing in');
   try {
-    await enter({ evaluator, username, pin: form.pin.value });
+    if (!gateSnapshot || gateIdentity !== identity) {
+      gateSnapshot = await getCommittee(pin, username);
+      gateIdentity = identity;
+      const names = new Map();
+      for (const score of gateSnapshot.scores || []) {
+        const name = String(score.evaluator || '').trim();
+        if (name && !names.has(normName(name))) names.set(normName(name), name);
+      }
+      form.evaluator.replaceChildren(
+        el('option', { value: '', text: 'Choose your name' }),
+        ...[...names.values()].sort((a,b) => a.localeCompare(b)).map(name => el('option', { value: name, text: name })),
+        el('option', { value: '__new__', text: 'Add a new evaluator' }),
+      );
+      $('#evaluator-field').hidden = false;
+      msg.textContent = 'Choose the name used for your earlier scores, or add a new evaluator.';
+      form.evaluator.focus();
+      return;
+    }
+    let evaluator = form.evaluator.value;
+    if (evaluator === '__new__') evaluator = $('#new-evaluator').value.trim().replace(/\\s+/g, ' ');
+    if (!evaluator) { msg.textContent = 'Choose or enter your name.'; form.evaluator.focus(); return; }
+    const existing = (gateSnapshot.scores || []).find(s => normName(s.evaluator) === normName(evaluator));
+    if (existing) evaluator = existing.evaluator;
+    await enter({ evaluator, username, pin }, gateSnapshot);
   } catch (error) {
-    msg.textContent = error.message === 'Failed to fetch' ? 'No connection to the server.' : error.message;
+    msg.textContent = error.message;
     form.dispatchEvent(new CustomEvent('form:error', { bubbles: true }));
   } finally {
-    setBusy(button, false, 'Sign in');
+    setBusy(button, false, gateSnapshot ? 'Sign in' : 'Continue');
   }
 });
 
