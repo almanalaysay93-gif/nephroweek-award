@@ -293,15 +293,11 @@ async function enter(credentials, snapshot) {
 
 let gateSnapshot = null;
 let gateIdentity = null;
-$('#evaluator').addEventListener('change', () => {
-  $('#new-evaluator-field').hidden = $('#evaluator').value !== '__new__';
-});
 for (const id of ['username', 'pin']) {
   $('#'+id).addEventListener('input', () => {
     gateSnapshot = null;
     gateIdentity = null;
     $('#evaluator-field').hidden = true;
-    $('#new-evaluator-field').hidden = true;
     $('#gate-submit').textContent = 'Continue';
   });
 }
@@ -330,16 +326,15 @@ $('#gate-form').addEventListener('submit', async (event) => {
       form.evaluator.replaceChildren(
         el('option', { value: '', text: 'Choose your name' }),
         ...[...names.values()].sort((a,b) => a.localeCompare(b)).map(name => el('option', { value: name, text: name })),
-        el('option', { value: '__new__', text: 'Add a new evaluator' }),
       );
       $('#evaluator-field').hidden = false;
-      msg.textContent = 'Choose the name used for your earlier scores, or add a new evaluator.';
+      msg.textContent = 'Choose the name used for your earlier scores.';
       form.evaluator.focus();
       return;
     }
     let evaluator = form.evaluator.value;
     if (evaluator === '__new__') evaluator = $('#new-evaluator').value.trim().replace(/\\s+/g, ' ');
-    if (!evaluator) { msg.textContent = 'Choose or enter your name.'; form.evaluator.focus(); return; }
+    if (!evaluator) { msg.textContent = 'Choose your name.'; form.evaluator.focus(); return; }
     const existing = (gateSnapshot.scores || []).find(s => normName(s.evaluator) === normName(evaluator));
     if (existing) evaluator = existing.evaluator;
     await enter({ evaluator, username, pin }, gateSnapshot);
