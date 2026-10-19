@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { AWARDS as JS_AWARDS, awardById } from '../js/awards.js';
+import { NURSES, ATTENDANTS } from '../js/staff.js';
 import { rankAward } from '../js/scoring.js';
 
 const CODE = fs.readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
@@ -196,6 +197,22 @@ test('weights in Code.gs match js/awards.js', () => {
   for (const a of JS_AWARDS) {
     if (a.type === 'scored') assert.ok(ctx.WEIGHTS[a.id], a.id);
   }
+});
+
+test('Patient Choice accepts technicians while keeping one shared vote per patient', () => {
+  const b = makeBackend();
+  b.clock.now = b.close - 1;
+  const nurse = { awardId: 'patient-choice', nominee: NURSES[0], nominator: 'Patient One' };
+  const technician = { ...nurse, nominee: ATTENDANTS[0] };
+  assert.equal(b.ctx.HANDLERS.nominate({ nomination: nurse }).ok, true);
+  const duplicate = b.ctx.HANDLERS.nominate({ nomination: technician });
+  assert.equal(duplicate.ok, false);
+  assert.match(duplicate.error, /already voted/);
+  for (const nominator of ['Patient Two', 'Patient Three']) {
+    assert.equal(b.ctx.HANDLERS.nominate({ nomination: { ...technician, nominator } }).ok, true);
+  }
+  assert.equal(rowsOf(b.data, 'Nominations').length, 3);
+  assert.deepEqual(plain(b.ctx.computeWinners_())['patient-choice'], [{ nominee: ATTENDANTS[0], value: 2 }]);
 });
 
 test('restoration keeps original rows and copies each missing submission only once', () => {

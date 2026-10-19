@@ -1,5 +1,5 @@
-import { ENDPOINT } from './config.js?v=20261019-login2';
-import { AWARDS, awardById } from './awards.js';
+import { ENDPOINT } from './config.js?v=20261019-patient-tech';
+import { AWARDS, awardById } from './awards.js?v=20261019-patient-tech';
 import { NURSES, ATTENDANTS } from './staff.js';
 import { normName, nominationError, validRatings } from './scoring.js';
 
@@ -8,7 +8,9 @@ export const DEMO = !ENDPOINT;
 const DEMO_PIN = 'demo';
 const KEY = 'nnw26-demo';
 
-export const eligibleFor = (award) => (award.group === 'na' ? ATTENDANTS : NURSES);
+export const eligibleFor = (award) => award.id === 'patient-choice'
+  ? [...NURSES, ...ATTENDANTS]
+  : award.group === 'na' ? ATTENDANTS : NURSES;
 
 // ---- Remote: Google Apps Script web app -----------------------------------
 // text/plain keeps the request "simple", so the browser sends no preflight.

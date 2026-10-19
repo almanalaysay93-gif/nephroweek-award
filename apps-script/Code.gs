@@ -525,7 +525,7 @@ var CERT_CITATIONS = {
   'team-player': 'For being the colleague the team can always count on',
   'kidney-advocacy': 'For bringing kidney health education and patient advocacy to the community',
   'rising-star': 'For fast growth, initiative, and strong work as a newly hired nurse',
-  'patient-choice': 'For the trust patients place in their nurse',
+  'patient-choice': 'For the trust patients place in their compassionate care',
   'peer-choice': 'For the trust colleagues place in their nurse',
   'na-outstanding': 'For overall excellence, professionalism, and commitment to quality dialysis services',
   'na-lifetime': 'For long service, dedication, and real contributions to the dialysis service',

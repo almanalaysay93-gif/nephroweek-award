@@ -1,6 +1,6 @@
-import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js';
+import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js?v=20261019-patient-tech';
 import { NURSES, ATTENDANTS } from './staff.js';
-import { getState, nominate, eligibleFor } from './api.js';
+import { getState, nominate, eligibleFor } from './api.js?v=20261019-patient-tech';
 import { el, $, initShell, toast, setBusy, displayName } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
 
@@ -12,7 +12,7 @@ const isVote = award?.type === 'votes';
 function renderHero() {
   const index = AWARDS.indexOf(award);
   document.title = `${award.title} | Nephrology Nurses Week 2026`;
-  $('#award-group').textContent = GROUPS[award.group].label;
+  $('#award-group').textContent = award.id === 'patient-choice' ? 'Nurses and Dialysis Technicians' : GROUPS[award.group].label;
   $('#award-title').textContent = award.title;
   $('#award-coverage').textContent = `Coverage: ${award.coverage}`;
   $('#award-type').textContent = isVote ? 'Decided by votes' : 'Scored by the committee';
@@ -55,8 +55,16 @@ function renderCriteria() {
 
 function renderForm() {
   const eligible = eligibleFor(award);
-  $('#nominee').append(...eligible.map((name) => el('option', { value: name, text: name })));
-  $('#nominee-label').textContent = isVote ? 'Your vote' : `Nominee (${GROUPS[award.group].noun})`;
+  const options = (names) => names.map((name) => el('option', { value: name, text: name }));
+  if (award.id === 'patient-choice') {
+    $('#nominee').append(
+      el('optgroup', { label: 'Nurses' }, options(NURSES)),
+      el('optgroup', { label: 'Dialysis Technicians' }, options(ATTENDANTS)),
+    );
+  } else {
+    $('#nominee').append(...options(eligible));
+  }
+  $('#nominee-label').textContent = award.id === 'patient-choice' ? 'Your vote (nurse or dialysis technician)' : isVote ? 'Your vote' : `Nominee (${GROUPS[award.group].noun})`;
   $('#nominate-title').textContent = isVote ? 'Vote' : 'Nominate';
   $('#nominate-submit').textContent = isVote ? 'Send vote' : 'Send nomination';
   $('#reason-field').hidden = isVote;

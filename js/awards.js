@@ -113,7 +113,7 @@ export const AWARDS = [
     id: 'patient-choice', group: 'nurse', type: 'votes', voter: 'patient',
     title: 'Patient Choice',
     coverage: 'Main and Annex Units',
-    blurb: 'Chosen by patients. The nurse with the most valid patient votes receives the award.',
+    blurb: 'Chosen by patients. The nurse or dialysis technician with the most valid patient votes receives the award.',
     criteria: [c('Number of valid patient votes', 100)],
   },
   {

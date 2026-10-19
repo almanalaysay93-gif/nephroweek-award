@@ -11,6 +11,7 @@ The award criteria and weights come from the Nephrology Nurses Week 2026 proposa
 - Each evaluator rates each criterion from 1 to 5.
 - The app applies the weights and shows a total out of 100.
 - The Results page ranks the nominees by the average total of all evaluators.
+- Patient Choice accepts both nurses and dialysis technicians. Each patient has one vote across the shared category.
 - The Patient Choice award and the Peer Choice award count one vote for each name.
 - The committee publishes the awardees from the Results page.
 - After that, each award page shows its awardee with an animation.

@@ -1,4 +1,4 @@
-import { AWARDS, GROUPS } from './awards.js';
+import { AWARDS, GROUPS } from './awards.js?v=20261019-patient-tech';
 import { getState } from './api.js';
 import { el, $, initShell, reveal, displayName } from './ui.js';
 import { mountRing } from './ring.js';
