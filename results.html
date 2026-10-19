@@ -35,18 +35,32 @@
       <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
       <h1 id="gate-title">Results</h1>
       <p class="lede">The tally is for the selection committee. Enter your committee username and PIN.</p>
-      <form id="gate-form" novalidate>
+      <form id="gate-form" method="post" novalidate>
         <div class="field">
           <label for="username">Username</label>
-          <input id="username" name="username" type="text" autocomplete="username" maxlength="80" required>
+          <input id="username" name="username" type="text" value="admin" autocomplete="username" maxlength="80" required>
         </div>
         <div class="field">
           <label for="pin">Committee PIN</label>
           <input id="pin" name="pin" type="password" autocomplete="current-password" maxlength="64" required>
         </div>
         <p class="form-msg" id="gate-msg" role="alert"></p>
-        <button class="btn btn--primary btn--block" type="submit" id="gate-submit">Open the tally</button>
+        <button class="btn btn--primary btn--block" type="submit" id="gate-submit" disabled>Loading sign-in…</button>
       </form>
+      <noscript><p class="form-msg">Enable JavaScript to sign in to Results.</p></noscript>
+      <script>
+        // Never submit credentials through a regular page navigation while modules load.
+        document.getElementById('gate-form').addEventListener('submit', function (event) {
+          event.preventDefault();
+        });
+        // Remove credentials left in the address by an older version of the form.
+        var loginUrl = new URL(window.location.href);
+        if (loginUrl.searchParams.has('username') || loginUrl.searchParams.has('pin')) {
+          loginUrl.searchParams.delete('username');
+          loginUrl.searchParams.delete('pin');
+          window.history.replaceState(null, '', loginUrl.pathname + loginUrl.search + loginUrl.hash);
+        }
+      </script>
     </section>
 
     <section class="results" id="results" hidden>
@@ -77,7 +91,7 @@
 
   <div class="toast-host" role="status" aria-live="polite"></div>
 
-  <script type="module" src="js/results.js"></script>
+  <script type="module" src="js/results.js?v=20261019-login2" onerror="document.getElementById('gate-msg').textContent = 'Sign-in could not load. Refresh this page and try again.';"></script>
   <script type="module" src="js/motion.js"></script>
 </body>
 </html>

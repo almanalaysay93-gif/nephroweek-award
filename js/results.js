@@ -1,6 +1,6 @@
 import { AWARDS } from './awards.js';
-import { getCommittee, publishWinners } from './api.js';
-import { rankAward, normName } from './scoring.js';
+import { getCommittee, publishWinners } from './api.js?v=20261019-login2';
+import { rankAward, normName } from './scoring.js?v=20261019-login2';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
 
@@ -107,6 +107,10 @@ $('#gate-form').addEventListener('submit', async (event) => {
     setBusy(button, false, 'Open the tally');
   }
 });
+
+// The form stays disabled until its submit handler and module dependencies are ready.
+$('#gate-submit').disabled = false;
+$('#gate-submit').textContent = 'Open the tally';
 
 $('#publish-btn').addEventListener('click', async (event) => {
   const button = event.currentTarget;

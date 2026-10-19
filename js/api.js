@@ -1,4 +1,4 @@
-import { ENDPOINT } from './config.js';
+import { ENDPOINT } from './config.js?v=20261019-login2';
 import { AWARDS, awardById } from './awards.js';
 import { NURSES, ATTENDANTS } from './staff.js';
 import { normName, nominationError, validRatings } from './scoring.js';
