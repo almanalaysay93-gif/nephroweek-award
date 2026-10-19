@@ -60,7 +60,15 @@ The demo username is `admin`. The demo committee PIN is the value of `DEMO_PIN` 
 8. Copy the address that ends in `/exec`.
 9. Paste the address into `ENDPOINT` in `js/config.js`.
 
-The script creates the tabs `Nominations`, `Scores`, and `Settings` on the first request.
+The script uses the original awards workbook identified by `SPREADSHEET_ID` in `apps-script/Code.gs`, even when deployed from another Apps Script project.
+It creates any missing tabs `Nominations`, `Scores`, and `Settings` on the first request.
+
+### Restore the original nominations after changing projects
+
+1. Replace `Code.gs` in the current Apps Script project with the repository version.
+2. Save and deploy a new version of the existing deployment, keeping its URL.
+3. Run `restoreRecentNominations` from that project's editor. It copies missing submissions from the previously attached workbook into the original workbook without replacing existing records. Repeated runs do not duplicate copied submissions.
+4. Refresh the awards website. Existing committee credentials stay in that project's Script Properties.
 
 ## Tests
 

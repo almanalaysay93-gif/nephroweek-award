@@ -50,7 +50,13 @@ function makeBackend(initial = {}) {
     insertSheet(name) { data[name] = []; return sheet(name); },
   };
   Object.assign(ctx, {
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss },
+    SpreadsheetApp: {
+      openById: (id) => {
+        assert.equal(id, '1zqhskKqPxgUXqWNMnGgQa_q1AnInZ7_Eyy0Tdlb4l50');
+        return ss;
+      },
+      getActiveSpreadsheet: () => { throw new Error('Do not use the attached workbook for live data.'); },
+    },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'COMMITTEE_PIN' ? PIN : null) }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ setMimeType() { return t; } }) },
@@ -146,6 +152,26 @@ test('weights in Code.gs match js/awards.js', () => {
   for (const a of JS_AWARDS) {
     if (a.type === 'scored') assert.ok(ctx.WEIGHTS[a.id], a.id);
   }
+});
+
+test('restoration keeps original rows and copies each missing submission only once', () => {
+  const { ctx } = makeBackend();
+  const old = ['2026-10-13', 'hd-nurse', 'Nurse A', 'Voter A', 'Original reason'];
+  const recent = ['2026-10-19', 'patient-choice', 'Nurse B', 'Voter B', ''];
+  const original = [old];
+  const missing = plain(ctx.missingNominationRows_([old, recent], original));
+  assert.deepEqual(missing, [recent]);
+  assert.deepEqual(original, [old]);
+  assert.deepEqual(plain(ctx.missingNominationRows_([old, recent], [...original, ...missing])), []);
+  assert.deepEqual(plain(ctx.missingNominationRows_([recent, recent], [recent])), [recent]);
+});
+
+test('restoration preserves text values and ignores empty source rows', () => {
+  const { ctx } = makeBackend();
+  const row = ['2026-10-19', 'hd-nurse', 'Nurse B', 'Voter B', '=1+1'];
+  const missing = plain(ctx.missingNominationRows_([[], row], []));
+  assert.equal(missing[0][4], "'=1+1");
+  assert.deepEqual(plain(ctx.missingNominationRows_([row], missing)), []);
 });
 
 test('gate: open one millisecond before 12:00 noon Manila, closed at 12:00 noon', () => {

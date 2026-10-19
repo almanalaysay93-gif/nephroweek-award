@@ -10,6 +10,9 @@
  * The sheet tabs are created on the first request.
  */
 
+// Keep the original awards workbook when deploying from a different Apps Script project.
+var SPREADSHEET_ID = '1zqhskKqPxgUXqWNMnGgQa_q1AnInZ7_Eyy0Tdlb4l50';
+
 var AWARDS = {
   // id: [type, number of criteria]
   'hd-nurse': ['scored', 5], 'pd-nurse': ['scored', 5], 'nephro-nurse': ['scored', 5],
@@ -202,7 +205,7 @@ function pinOk_(pin) {
 }
 
 function tab_(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -217,6 +220,52 @@ function rows_(name) {
   var last = sheet.getLastRow();
   if (last < 2) return [];
   return sheet.getRange(2, 1, last - 1, TABS[name].length).getValues();
+}
+
+// After deploying this version, run once from the editor to preserve recent votes
+// collected in the attached workbook. Existing original rows are never replaced.
+// Repeated runs copy only missing submissions, including legitimate repeated rows.
+function restoreRecentNominations() {
+  return locked_(function () {
+    var attached = SpreadsheetApp.getActiveSpreadsheet();
+    if (!attached) throw new Error('Open this script from the workbook used by the previous deployment.');
+    if (attached.getId() === SPREADSHEET_ID) return { ok: true, added: 0 };
+    var source = attached.getSheetByName('Nominations');
+    if (!source || source.getLastRow() < 2) return { ok: true, added: 0 };
+    var headers = source.getRange(1, 1, 1, 5).getValues()[0];
+    if (JSON.stringify(headers) !== JSON.stringify(TABS.Nominations)) throw new Error('The source Nominations headers do not match.');
+    var target = tab_('Nominations');
+    var targetHeaders = target.getRange(1, 1, 1, 5).getValues()[0];
+    if (JSON.stringify(targetHeaders) !== JSON.stringify(TABS.Nominations)) throw new Error('The original Nominations headers do not match.');
+    var existing = rows_('Nominations');
+    var submissions = source.getRange(2, 1, source.getLastRow() - 1, 5).getValues();
+    var missing = missingNominationRows_(submissions, existing);
+    if (missing.length) {
+      var last = target.getLastRow();
+      var needed = last + missing.length - target.getMaxRows();
+      if (needed > 0) target.insertRowsAfter(target.getMaxRows(), needed);
+      target.getRange(last + 1, 1, missing.length, 5).setValues(missing);
+    }
+    return { ok: true, added: missing.length };
+  });
+}
+
+function missingNominationRows_(source, existing) {
+  function key(row) {
+    return JSON.stringify(row.map(function (value, i) {
+      return i === 0 ? iso_(value) : String(value || '').replace(/^'/, '');
+    }));
+  }
+  var counts = {};
+  existing.forEach(function (row) { var k = key(row); counts[k] = (counts[k] || 0) + 1; });
+  return source.filter(function (row) {
+    if (!row[1]) return false;
+    var k = key(row);
+    if (counts[k]) { counts[k]--; return false; }
+    return true;
+  }).map(function (row) {
+    return row.map(function (value, i) { return i === 0 ? value : safe_(String(value || '')); });
+  });
 }
 
 function winners_() {
