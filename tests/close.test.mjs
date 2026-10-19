@@ -178,7 +178,7 @@ test('gate: open one millisecond before 12:00 noon Manila, closed at 12:00 noon'
   const b = makeBackend();
   assert.equal(b.ctx.isClosed_(b.close - 1), false);
   assert.equal(b.ctx.isClosed_(b.close), true);
-  assert.equal(b.ctx.CLOSE_AT.toISOString(), '2026-10-19T04:00:00.000Z');
+  assert.equal(b.ctx.CLOSE_AT.toISOString(), '2026-10-20T04:00:00.000Z');
 });
 
 test('gate: writes succeed before close and are refused after', () => {
@@ -202,46 +202,53 @@ test('public state reports closeAt and closed', () => {
   b.clock.now = b.close - 1;
   const pre = plain(b.ctx.publicView_());
   assert.equal(pre.closed, false);
-  assert.equal(pre.closeAt, '2026-10-19T04:00:00.000Z');
+  assert.equal(pre.closeAt, '2026-10-20T04:00:00.000Z');
   b.clock.now = b.close;
   assert.equal(plain(b.ctx.publicView_()).closed, true);
 });
 
-test('Patient Choice alone stays open until 20 October at noon Manila', () => {
+test('all awards stay open after the former deadline and close together on October 20', () => {
   const b = makeBackend();
-  const patientClose = Date.parse('2026-10-20T12:00:00+08:00');
+  const formerClose = Date.parse('2026-10-19T12:00:00+08:00');
+  const close = Date.parse('2026-10-20T12:00:00+08:00');
+  assert.equal(b.close, close);
   for (const id of Object.keys(b.ctx.AWARDS)) {
-    assert.equal(b.ctx.isClosed_(b.close, id), id !== 'patient-choice', id);
-    assert.equal(b.ctx.isClosed_(patientClose - 1, id), id !== 'patient-choice', id);
-    assert.equal(b.ctx.isClosed_(patientClose, id), true, id);
+    assert.equal(b.ctx.isClosed_(formerClose, id), false, id);
+    assert.equal(b.ctx.isClosed_(close - 1, id), false, id);
+    assert.equal(b.ctx.isClosed_(close, id), true, id);
   }
-  b.clock.now = b.close;
+  b.clock.now = formerClose;
   const state = plain(b.ctx.publicView_());
-  assert.equal(state.closed, true, 'original deadline remains unchanged');
-  assert.equal(state.closedByAward['patient-choice'], false);
-  assert.equal(state.closedByAward['peer-choice'], true);
-  assert.equal(state.closeAtByAward['patient-choice'], '2026-10-20T04:00:00.000Z');
-  assert.equal(state.closeAtByAward['peer-choice'], state.closeAt);
-  b.clock.now = patientClose;
-  assert.equal(plain(b.ctx.publicView_()).closedByAward['patient-choice'], true);
+  assert.equal(state.closed, false);
+  for (const id of Object.keys(b.ctx.AWARDS)) {
+    assert.equal(state.closedByAward[id], false, id);
+    assert.equal(state.closeAtByAward[id], '2026-10-20T04:00:00.000Z', id);
+  }
+  b.clock.now = close;
+  const after = plain(b.ctx.publicView_());
+  assert.equal(after.closed, true);
+  assert.ok(Object.values(after.closedByAward).every(Boolean));
 });
 
-test('Patient Choice votes succeed during extension and stop at its deadline', () => {
+test('all awards accept nominations or votes during extension and reject them at the deadline', () => {
   const b = makeBackend();
-  const patientClose = Date.parse('2026-10-20T12:00:00+08:00');
-  const nomination = { awardId: 'patient-choice', nominee: 'CRUZ, Ana', nominator: 'Ben Reyes' };
+  for (const id of Object.keys(b.ctx.AWARDS)) {
+    const nomination = { awardId: id, nominee: 'CRUZ, Ana', nominator: 'Ben Reyes', reason: 'Excellent patient care.' };
+    b.clock.now = Date.parse('2026-10-19T12:00:00+08:00');
+    assert.equal(b.ctx.HANDLERS.nominate({ nomination }).ok, true, id);
+    b.clock.now = b.close - 1;
+    assert.equal(b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Cora Lim' } }).ok, true, id);
+    b.clock.now = b.close;
+    const after = b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Dina Cruz' } });
+    assert.equal(after.ok, false, id);
+    assert.match(after.error, /Voting is closed/);
+  }
+  assert.equal(rowsOf(b.data, 'Nominations').length, Object.keys(b.ctx.AWARDS).length * 2);
+  b.clock.now = b.close - 1;
+  const score = { awardId: 'hd-nurse', nominee: 'CRUZ, Ana', evaluator: 'Evaluator', ratings: [5, 5, 5, 5, 5] };
+  assert.equal(b.ctx.HANDLERS.score({ username: 'admin', pin: PIN, score }).ok, true);
   b.clock.now = b.close;
-  assert.equal(b.ctx.HANDLERS.nominate({ nomination }).ok, true);
-  const peer = b.ctx.HANDLERS.nominate({ nomination: { ...nomination, awardId: 'peer-choice' } });
-  assert.equal(peer.ok, false);
-  assert.match(peer.error, /Voting is closed/);
-  b.clock.now = patientClose - 1;
-  assert.equal(b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Cora Lim' } }).ok, true);
-  b.clock.now = patientClose;
-  const after = b.ctx.HANDLERS.nominate({ nomination: { ...nomination, nominator: 'Dina Cruz' } });
-  assert.equal(after.ok, false);
-  assert.match(after.error, /Voting is closed/);
-  assert.equal(rowsOf(b.data, 'Nominations').length, 2);
+  assert.equal(b.ctx.HANDLERS.score({ username: 'admin', pin: PIN, score }).ok, false);
 });
 
 for (const c of VECTORS.cases) {

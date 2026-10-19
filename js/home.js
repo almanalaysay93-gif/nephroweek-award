@@ -4,7 +4,7 @@ import { el, $, initShell, reveal, displayName } from './ui.js';
 import { mountRing } from './ring.js';
 import { avatar, setPhotoMap } from './photos.js';
 
-const CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
+const CLOSE_LABEL = '20 October 2026, 12:00 noon Manila time';
 const ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
 
 function awardCard(award, index) {
@@ -44,7 +44,7 @@ function awardeeCard(award, rows) {
 }
 
 // Winners come from the public state. Ties show every name on one card.
-function renderAwardees({ winners, closed, closedByAward, announced }) {
+function renderAwardees({ winners, closed, announced }) {
   const grid = $('#awardees-grid');
   const none = $('#awardees-none');
   const won = AWARDS.filter((a) => winners && winners[a.id] && winners[a.id].length);
@@ -56,8 +56,8 @@ function renderAwardees({ winners, closed, closedByAward, announced }) {
   $('#awardees-note').textContent = announced
     ? 'Winners of the Nephrology Nurses Week 2026 awards.'
     : closed
-      ? `Voting for other awards closed on ${CLOSE_LABEL}. Patient Choice voting ${closedByAward?.['patient-choice'] ? 'closed' : 'closes'} on 20 October 2026, 12:00 noon Manila time. Winners are announced on ${ANNOUNCE_LABEL}.`
-      : `Patient Choice voting closes on 20 October 2026, 12:00 noon Manila time. Voting for all other awards closes on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`;
+      ? `Voting closed on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`
+      : `Voting for all awards closes on ${CLOSE_LABEL}. Winners are announced on ${ANNOUNCE_LABEL}.`;
   const missing = announced ? AWARDS.filter((a) => !won.includes(a)) : [];
   none.hidden = missing.length === 0;
   none.textContent = missing.length ? 'No awardee: ' + missing.map((a) => a.title).join(', ') + '.' : '';

@@ -22,11 +22,9 @@ var AWARDS = {
   'na-technical': ['scored', 5], 'na-extra-miler': ['scored', 5]
 };
 
-// Voting closes at 12:00 noon Manila time on 19 October 2026. The server clock decides.
-var CLOSE_AT = new Date('2026-10-19T12:00:00+08:00');
-var CLOSE_LABEL = '19 October 2026, 12:00 noon Manila time';
-// Patient Choice has an extended voting deadline; all other awards keep CLOSE_AT.
-var PATIENT_CHOICE_CLOSE_AT = new Date('2026-10-20T12:00:00+08:00');
+// Voting closes at 12:00 noon Manila time on 20 October 2026. The server clock decides.
+var CLOSE_AT = new Date('2026-10-20T12:00:00+08:00');
+var CLOSE_LABEL = '20 October 2026, 12:00 noon Manila time';
 // Winners are posted on the landing page at 12:00 noon Manila time on 23 October 2026.
 var ANNOUNCE_AT = new Date('2026-10-23T12:00:00+08:00');
 var ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
@@ -301,7 +299,7 @@ function parse_(s, fallback) { try { return s ? JSON.parse(s) : fallback; } catc
 
 // ---- Automatic close (see docs/plans/2026-10-14-voting-close-design.md) ----
 
-function closeAt_(awardId) { return awardId === 'patient-choice' ? PATIENT_CHOICE_CLOSE_AT : CLOSE_AT; }
+function closeAt_() { return CLOSE_AT; }
 function isClosed_(nowMs, awardId) { return nowMs >= closeAt_(awardId).getTime(); }
 function isAnnounced_(nowMs) { return nowMs >= ANNOUNCE_AT.getTime(); }
 function closed_() { return fail_('Voting is closed. Winners are announced on ' + ANNOUNCE_LABEL + '.'); }
