@@ -1,4 +1,4 @@
-import { ENDPOINT } from './config.js?v=20261019-patient-tech';
+import { ENDPOINT } from './config.js?v=20261019-score-save';
 import { AWARDS, awardById } from './awards.js?v=20261019-patient-tech';
 import { NURSES, ATTENDANTS } from './staff.js';
 import { normName, nominationError, validRatings } from './scoring.js';
@@ -14,14 +14,32 @@ export const eligibleFor = (award) => award.id === 'patient-choice'
 
 // ---- Remote: Google Apps Script web app -----------------------------------
 // text/plain keeps the request "simple", so the browser sends no preflight.
-async function remote(action, payload = {}) {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, ...payload }),
-  });
-  if (!res.ok) throw new Error(`The server answered ${res.status}.`);
-  return res.json();
+async function remote(action, payload = {}, { timeoutMs = 25000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const error = new Error(`The server answered ${res.status}.`);
+      error.retryable = res.status === 408 || res.status === 429 || res.status >= 500;
+      throw error;
+    }
+    return await res.json();
+  } catch (error) {
+    if (error.name === 'AbortError' || error instanceof TypeError || error instanceof SyntaxError) {
+      const failure = new Error(error.name === 'AbortError' ? 'The connection timed out.' : 'The server response could not be received.');
+      failure.retryable = true;
+      throw failure;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ---- Local demo store ------------------------------------------------------
@@ -82,8 +100,8 @@ const local = {
   },
 };
 
-async function call(action, payload) {
-  const out = DEMO ? local[action](payload || {}) : await remote(action, payload);
+async function call(action, payload, options) {
+  const out = DEMO ? local[action](payload || {}) : await remote(action, payload, options);
   if (!out || out.ok !== true) throw new Error((out && out.error) || 'The request failed.');
   return out;
 }
@@ -109,12 +127,38 @@ export async function nominate(nomination) {
 
 export const getCommittee = (pin, username) => call('committee', { pin, username });
 
-export async function saveScore(pin, score, username) {
+export async function saveScore(pin, score, username, { onStatus = () => {}, timeoutMs = 15000, confirmationTimeoutMs = 10000, retryDelayMs = 800 } = {}) {
   const award = awardById(score.awardId);
   if (!award || award.type !== 'scored') throw new Error('This award is not scored.');
   if (!normName(score.evaluator)) throw new Error('Enter your name.');
   if (!validRatings(score.ratings, award.criteria)) throw new Error('Rate every criterion from 1 to 5.');
-  return call('score', { pin, score, username });
+  // Score writes replace the same evaluator/nominee/award row, so retrying does
+  // not create an extra evaluation. Check first: a lost response can follow a save.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    onStatus(attempt ? 'retrying' : 'saving');
+    try {
+      return await call('score', { pin, score, username }, { timeoutMs });
+    } catch (error) {
+      if (!error.retryable) throw error;
+      onStatus('checking');
+      try {
+        const state = await call('committee', { pin, username }, { timeoutMs: confirmationTimeoutMs });
+        const stored = (state.scores || []).find((s) => s.awardId === score.awardId
+          && normName(s.nominee) === normName(score.nominee)
+          && normName(s.evaluator) === normName(score.evaluator));
+        if (stored && Array.isArray(stored.ratings) && stored.ratings.length === score.ratings.length
+          && stored.ratings.every((rating, i) => rating === score.ratings[i])) {
+          return { ok: true, verified: true };
+        }
+      } catch {
+        // Keep the uncertainty explicit if neither the write nor its readback succeeds.
+      }
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
+  const error = new Error('Could not confirm whether the score was saved. Please try again.');
+  error.scoreUnconfirmed = true;
+  throw error;
 }
 
 export const publishWinners = (pin, winners, username) => call('publish', { pin, winners, username });

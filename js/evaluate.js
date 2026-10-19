@@ -1,8 +1,9 @@
 import { AWARDS, RATING_SCALE } from './awards.js';
-import { getCommittee, saveScore } from './api.js';
-import { normName, weightedTotal, validRatings, rankVotes } from './scoring.js';
+import { getCommittee, saveScore } from './api.js?v=20261019-score-save';
+import { normName, weightedTotal, validRatings, rankVotes } from './scoring.js?v=20261019-score-save';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
+import { readScoreDraft, writeScoreDraft, clearScoreDraft } from './score-drafts.js?v=20261019-score-save';
 
 let me = null;      // { evaluator, username, pin }
 let data = null;    // { nominations, scores }
@@ -83,20 +84,26 @@ function nomineeCard(award, nominee, i) {
   // A damaged ratings cell in the sheet counts as no score.
   const stored = myScore(award, nominee);
   const saved = stored && validRatings(stored.ratings, award.criteria) ? stored : null;
-  const ratings = saved ? [...saved.ratings] : award.criteria.map(() => null);
+  const draft = readScoreDraft(me.username, me.evaluator, award.id, nominee);
+  const restored = draft?.length === award.criteria.length && (!saved || draft.some((r, k) => r !== saved.ratings[k]));
+  if (draft && !restored) clearScoreDraft(me.username, me.evaluator, award.id, nominee);
+  const ratings = restored ? [...draft] : saved ? [...saved.ratings] : award.criteria.map(() => null);
+  let saving = false;
+  let confirmed = !!saved;
+  let draftKept = !!restored;
   const reasons = data.nominations.filter((n) => n.awardId === award.id && n.nominee === nominee);
 
   const total = el('output', { class: 'score-total__value' });
-  const status = el('span', { class: 'score-status', 'aria-live': 'polite', text: saved ? 'Saved' : '' });
+  const status = el('span', { class: 'score-status', 'aria-live': 'polite', text: restored ? 'Unsent ratings restored' : saved ? 'Saved' : '' });
   const button = el('button', { class: 'btn btn--primary', type: 'submit', text: saved ? 'Update score' : 'Save score' });
-  const card = el('form', { class: `nominee-score glass${saved ? ' is-saved' : ''}`, 'data-reveal': true, style: `--i:${i}`, novalidate: true });
+  const card = el('form', { class: `nominee-score glass${saved && !restored ? ' is-saved' : ''}`, 'data-reveal': true, style: `--i:${i}`, novalidate: true });
 
   const refresh = () => {
     const filled = validRatings(ratings, award.criteria);
     const partial = award.criteria.reduce((sum, cr, k) => sum + ((ratings[k] || 0) / 5) * cr.weight, 0);
     total.textContent = (filled ? weightedTotal(ratings, award.criteria) : partial).toFixed(2);
     card.style.setProperty('--score', partial / 100);
-    button.disabled = !filled;
+    button.disabled = saving || !filled;
   };
 
   card.append(
@@ -114,7 +121,8 @@ function nomineeCard(award, nominee, i) {
     ),
     el('div', { class: 'rating-list' }, award.criteria.map((cr, k) => ratingGroup(award, nominee, k, cr, ratings[k], (n) => {
       ratings[k] = n;
-      status.textContent = saved ? 'Changed, not saved' : '';
+      draftKept = writeScoreDraft(me.username, me.evaluator, award.id, nominee, ratings);
+      status.textContent = confirmed ? 'Changed, not saved' : draftKept ? 'Ratings kept on this device' : '';
       card.classList.remove('is-saved');
       refresh();
     }))),
@@ -130,22 +138,43 @@ function nomineeCard(award, nominee, i) {
 
   card.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (saving || !validRatings(ratings, award.criteria)) return;
     const idle = button.textContent;
+    let success = false;
+    saving = true;
+    draftKept = writeScoreDraft(me.username, me.evaluator, award.id, nominee, ratings);
+    card.querySelectorAll('fieldset').forEach((field) => { field.disabled = true; });
     setBusy(button, true, 'Saving');
     try {
       const score = { awardId: award.id, nominee, evaluator: me.evaluator, ratings: [...ratings] };
-      await saveScore(me.pin, score, me.username);
-      data.scores = data.scores.filter((s) => s !== myScore(award, nominee));
+      const result = await saveScore(me.pin, score, me.username, {
+        onStatus: (stage) => {
+          status.textContent = stage === 'checking' ? 'Checking whether the score saved…' : stage === 'retrying' ? 'Reconnecting and retrying…' : 'Saving…';
+          setBusy(button, true, stage === 'checking' ? 'Checking' : stage === 'retrying' ? 'Retrying' : 'Saving');
+        },
+      });
+      data.scores = data.scores.filter((s) => !(s.awardId === score.awardId
+        && normName(s.nominee) === normName(score.nominee)
+        && normName(s.evaluator) === normName(score.evaluator)));
       data.scores.push(score);
-      status.textContent = 'Saved';
+      clearScoreDraft(me.username, me.evaluator, award.id, nominee);
+      success = true;
+      confirmed = true;
+      status.textContent = result.verified ? 'Saved · confirmed' : 'Saved';
       card.classList.add('is-saved');
       card.dispatchEvent(new CustomEvent('score:saved', { bubbles: true }));
-      setBusy(button, false, 'Update score');
       renderProgress();
     } catch (error) {
-      status.textContent = '';
-      toast(error.message === 'Failed to fetch' ? 'No connection. The score is not saved.' : error.message, 'error');
-      setBusy(button, false, idle);
+      status.textContent = error.scoreUnconfirmed ? 'Save not confirmed' : 'Not saved';
+      const message = error.scoreUnconfirmed
+        ? draftKept ? 'Could not confirm saving. Your ratings are kept on this device. Try saving again when connected.' : 'Could not confirm saving. Your selected ratings are still shown. Try saving again when connected.'
+        : error.message;
+      toast(message, 'error');
+    } finally {
+      saving = false;
+      card.querySelectorAll('fieldset').forEach((field) => { field.disabled = false; });
+      setBusy(button, false, success ? 'Update score' : idle);
+      refresh();
     }
   });
 

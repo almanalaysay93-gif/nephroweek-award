@@ -100,3 +100,8 @@ node --test tests/scoring.test.mjs
 - A native Google Slides certificate template is configured in `CERT_TEMPLATE_ID`. Each certificate is attached as both PPTX and PDF, with an editable Slides link. Large sets are split into separate emails.
 - `sendAwardCertificates` can retry after the email time; saved files and successfully sent batches are reused. It refuses to send before the deadline. The private `certificateEmailLog` setting records success or failure.
 - Save and deploy a new version after updating `Code.gs`; the existing deployment URL and committee credentials can stay unchanged.
+
+## Committee score saving
+
+Score requests have a timeout. If a response is lost, the page checks the evaluator's stored ratings before retrying the same score once. Server refusals such as a closed deadline are never retried.
+Unsent ratings are kept on the same browser/device, separately for each evaluator, award, and nominee. Drafts contain ratings, not the committee PIN, and are cleared after a confirmed save. A failed confirmation leaves the ratings available to retry instead of reporting them as saved.
