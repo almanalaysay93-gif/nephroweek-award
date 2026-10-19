@@ -109,6 +109,7 @@ var HANDLERS = {
       }),
       winners: winners_(),
       photos: publicPhotos_(),
+      closed: isClosed_(Date.now()),
       closeLog: settingValue_('closeLog')
     };
   },
@@ -380,6 +381,15 @@ function rankAward_(id, nominations, scores) {
       : null;
     return { nominee: nominee, value: avg };
   });
+  // After the deadline, an entirely unscored category is decided by nominations.
+  if (isClosed_(Date.now()) && !rows.some(function (r) { return r.value !== null; })) {
+    rows.forEach(function (r) {
+      r.value = nominations.filter(function (n) {
+        return n.awardId === id && norm_(n.nominee) === norm_(r.nominee);
+      }).length;
+      r.basis = 'nominations';
+    });
+  }
   rows.sort(function (a, b) {
     var av = a.value === null ? -1 : a.value;
     var bv = b.value === null ? -1 : b.value;
@@ -399,7 +409,11 @@ function computeWinners_() {
   var out = {};
   Object.keys(AWARDS).forEach(function (id) {
     var top = rankAward_(id, nominations, scores).filter(function (r) { return r.rank === 1; });
-    if (top.length) out[id] = top.map(function (r) { return { nominee: r.nominee, value: r.value }; });
+    if (top.length) out[id] = top.map(function (r) {
+      var winner = { nominee: r.nominee, value: r.value };
+      if (r.basis === 'nominations') winner.basis = 'nominations';
+      return winner;
+    });
   });
   return out;
 }

@@ -1,6 +1,6 @@
 import { AWARDS } from './awards.js';
 import { getCommittee, publishWinners } from './api.js';
-import { rankScored, rankVotes, normName } from './scoring.js';
+import { rankAward, normName } from './scoring.js';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
 
@@ -9,16 +9,7 @@ let username = null;
 let data = null;
 
 function ranking(award) {
-  if (award.type === 'votes') {
-    return rankVotes(award, data.nominations).map((r) => ({ ...r, value: r.votes }));
-  }
-  const seen = new Map();
-  data.nominations.filter((n) => n.awardId === award.id).forEach((n) => {
-    const key = normName(n.nominee);
-    if (!seen.has(key)) seen.set(key, n.nominee);
-  });
-  const names = [...seen.values()];
-  return rankScored(award, names, data.scores).map((r) => ({ ...r, value: r.average }));
+  return rankAward(award, data.nominations, data.scores, data.closed === true);
 }
 
 // The snapshot that the public award pages show: every nominee at rank 1.
@@ -26,7 +17,7 @@ function winnersSnapshot() {
   const winners = {};
   for (const award of AWARDS) {
     const top = ranking(award).filter((r) => r.rank === 1);
-    if (top.length) winners[award.id] = top.map((r) => ({ nominee: r.nominee, value: r.value }));
+    if (top.length) winners[award.id] = top.map((r) => ({ nominee: r.nominee, value: r.value, ...(r.basis === 'nominations' ? { basis: r.basis } : {}) }));
   }
   return winners;
 }
@@ -34,11 +25,13 @@ function winnersSnapshot() {
 function awardResult(award, i) {
   const rows = ranking(award);
   const isVote = award.type === 'votes';
+  const byNominations = rows[0]?.basis === 'nominations';
+  const countBased = isVote || byNominations;
   const unscored = rows.filter((r) => r.rank === null).length;
   return el('section', { class: 'result-card glass', 'data-reveal': true, style: `--i:${i}` },
     el('header', { class: 'result-card__head' },
       el('h2', {}, el('a', { href: `award.html?id=${award.id}`, text: award.title })),
-      el('p', { class: 'chip', text: isVote ? 'By votes' : 'Scored' }),
+      el('p', { class: 'chip', text: byNominations ? 'By nominations' : isVote ? 'By votes' : 'Scored' }),
     ),
     rows.length
       ? el('table', { class: 'result-table' },
@@ -46,16 +39,17 @@ function awardResult(award, i) {
         el('thead', {}, el('tr', {},
           el('th', { scope: 'col', text: 'Rank' }),
           el('th', { scope: 'col', text: 'Nominee' }),
-          el('th', { scope: 'col', class: 'num', text: isVote ? 'Votes' : 'Score' }),
-          isVote ? null : el('th', { scope: 'col', class: 'num', text: 'Evaluators' }),
+          el('th', { scope: 'col', class: 'num', text: byNominations ? 'Nominations' : isVote ? 'Votes' : 'Score' }),
+          countBased ? null : el('th', { scope: 'col', class: 'num', text: 'Evaluators' }),
         )),
         el('tbody', {}, rows.map((r) => el('tr', { class: r.rank === 1 ? 'is-top' : null },
           el('td', { text: r.rank ?? 'n/a' }),
           el('th', { scope: 'row' }, el('span', { class: 'result-name' }, avatar(r.nominee, 'staff-avatar staff-avatar--sm'), displayName(r.nominee))),
-          el('td', { class: 'num', text: r.value === null ? 'Not scored' : isVote ? r.value : r.value.toFixed(2) }),
-          isVote ? null : el('td', { class: 'num', text: r.evaluators }),
+          el('td', { class: 'num', text: r.value === null ? 'Not scored' : countBased ? r.value : r.value.toFixed(2) }),
+          countBased ? null : el('td', { class: 'num', text: r.evaluators }),
         ))))
       : el('p', { class: 'empty', text: isVote ? 'No vote yet.' : 'No nominee yet.' }),
+    byNominations ? el('p', { class: 'result-card__warn', text: 'No valid committee scores were submitted by the deadline. Most nominations determines the winner.' }) : null,
     unscored ? el('p', { class: 'result-card__warn', text: `${unscored} ${unscored === 1 ? 'nominee has' : 'nominees have'} no score yet.` }) : null,
     rows.filter((r) => r.rank === 1).length > 1
       ? el('p', { class: 'result-card__warn', text: 'Tie at rank 1. The committee decides, or both names are published.' })

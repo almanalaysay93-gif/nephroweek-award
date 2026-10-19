@@ -31,6 +31,35 @@ export function rankScored(award, nominees, scores) {
   return withRanks(rows, (r) => r.average);
 }
 
+// Use nomination counts only after close and only when an entire scored award
+// has no valid committee scores. Every scored-award nomination counts.
+export function rankAward(award, nominations, scores, allowFallback = false) {
+  if (award.type === 'votes') {
+    return rankVotes(award, nominations).map((r) => ({ ...r, value: r.votes, basis: 'votes' }));
+  }
+  const nominees = new Map();
+  for (const n of nominations) {
+    if (n.awardId === award.id && normName(n.nominee) && !nominees.has(normName(n.nominee))) {
+      nominees.set(normName(n.nominee), n.nominee);
+    }
+  }
+  const rows = rankScored(award, [...nominees.values()], scores);
+  if (!allowFallback || rows.some((r) => r.average !== null)) {
+    return rows.map((r) => ({ ...r, value: r.average, basis: 'score' }));
+  }
+  const counts = new Map();
+  for (const n of nominations) {
+    if (n.awardId !== award.id) continue;
+    const key = normName(n.nominee);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const fallback = rows.map((r) => ({
+    ...r, value: counts.get(normName(r.nominee)), basis: 'nominations',
+  }));
+  fallback.sort((a, b) => b.value - a.value || a.nominee.localeCompare(b.nominee));
+  return withRanks(fallback, (r) => r.value);
+}
+
 // Rank the nominees of a vote award. One voter counts once per award.
 export function rankVotes(award, nominations) {
   const seen = new Set();

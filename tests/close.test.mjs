@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { AWARDS as JS_AWARDS, awardById } from '../js/awards.js';
-import { rankScored, rankVotes } from '../js/scoring.js';
+import { rankAward } from '../js/scoring.js';
 
 const CODE = fs.readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
 const VECTORS = JSON.parse(fs.readFileSync(new URL('./rank-vectors.json', import.meta.url), 'utf8'));
@@ -202,9 +202,11 @@ test('public state reports closeAt and closed', () => {
   b.clock.now = b.close - 1;
   const pre = plain(b.ctx.publicView_());
   assert.equal(pre.closed, false);
+  assert.equal(plain(b.ctx.HANDLERS.committee({ username: 'admin', pin: PIN })).closed, false);
   assert.equal(pre.closeAt, '2026-10-20T04:00:00.000Z');
   b.clock.now = b.close;
   assert.equal(plain(b.ctx.publicView_()).closed, true);
+  assert.equal(plain(b.ctx.HANDLERS.committee({ username: 'admin', pin: PIN })).closed, true);
 });
 
 test('all awards stay open after the former deadline and close together on October 20', () => {
@@ -254,6 +256,7 @@ test('all awards accept nominations or votes during extension and reject them at
 for (const c of VECTORS.cases) {
   test(`ranking parity: ${c.name}`, () => {
     const b = makeBackend();
+    b.clock.now = c.afterClose ? b.close : b.close - 1;
     const nominations = c.nominations.map((n) => ({ awardId: n.awardId, nominee: n.nominee, nominator: n.nominator }));
     const scores = c.scores.map((s) => ({ awardId: s.awardId, nominee: s.nominee, evaluator: s.evaluator, ratings: s.ratings }));
 
@@ -266,9 +269,7 @@ for (const c of VECTORS.cases) {
 
     // JavaScript ranking in js/scoring.js
     const award = awardById(c.awardId);
-    const jsRows = award.type === 'votes'
-      ? rankVotes(award, nominations).map((r) => ({ nominee: r.nominee, value: r.votes, rank: r.rank }))
-      : rankScored(award, [...new Set(nominations.map((n) => n.nominee))], scores).map((r) => ({ nominee: r.nominee, value: r.average, rank: r.rank }));
+    const jsRows = rankAward(award, nominations, scores, !!c.afterClose);
     assert.deepEqual(jsRows.map((r) => [r.nominee, r.value, r.rank]), c.expectRanks, 'JavaScript ranks');
   });
 }
@@ -310,12 +311,13 @@ test('closeAndPublish: posts new winners, keeps published awards, is idempotent'
   assert.match(settingOf(b.data, 'closeLog'), /ok/);
 });
 
-test('closeAndPublish: no scored nominee means no winner for that award', () => {
+test('closeAndPublish: an unscored award uses nominations and records the basis', () => {
   const b = makeBackend({ Nominations: [HEADERS.Nominations, ['t', 'hd-nurse', 'CRUZ, Ana', 'A', 'r']] });
   b.clock.now = b.ctx.ANNOUNCE_AT.getTime();
   b.ctx.closeAndPublish();
   const winners = JSON.parse(settingOf(b.data, 'winners'));
-  assert.equal(winners['hd-nurse'], undefined);
+  assert.deepEqual(winners['hd-nurse'], [{ nominee: 'CRUZ, Ana', value: 1, basis: 'nominations' }]);
+  assert.equal(winners['pd-nurse'], undefined, 'a category without nominees still has no winner');
 });
 
 test('previewClose returns winners and writes nothing', () => {

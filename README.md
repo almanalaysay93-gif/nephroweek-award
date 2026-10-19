@@ -22,6 +22,7 @@ A rating of 5 earns the full weight of a criterion.
 A rating of 3 on a criterion with a weight of 30 earns 18 points.
 The final score of a nominee is the mean of the totals from all evaluators.
 Nominees with the same score share one rank.
+After the voting/scoring deadline, a scored award with no valid committee scores is decided by the highest number of nominations for that category. Every nomination counts, and spacing or capitalization does not split one nominee into different people. Ties share first place. Categories with any valid committee score continue to use committee scoring; vote awards keep their one-vote-per-name rule. The automatic announcement still runs on October 23 at noon Manila time.
 The rules are in `js/scoring.js`.
 
 ## Pages

@@ -95,7 +95,9 @@ function renderWinner(winners) {
   if (!rows || !rows.length) { box.hidden = true; return; }
   $('#winner-title').textContent = rows.length > 1 ? 'Awardees (tie)' : 'Awardee';
   $('#winner-names').replaceChildren(...rows.map((r) => el('div', { class: 'winner__person' }, avatar(r.nominee, 'staff-avatar staff-avatar--xl'), el('h2', { class: 'winner__name', text: displayName(r.nominee) }))));
-  $('#winner-score').textContent = isVote
+  $('#winner-score').textContent = rows[0].basis === 'nominations'
+    ? `${rows[0].value} ${rows[0].value === 1 ? 'nomination' : 'nominations'} · No committee scores submitted by the deadline`
+    : isVote
     ? `${rows[0].value} valid ${rows[0].value === 1 ? 'vote' : 'votes'}`
     : `Final score ${rows[0].value.toFixed(2)} of 100`;
   box.hidden = false;
