@@ -1,6 +1,6 @@
-import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js?v=20261019-patient-tech';
+import { AWARDS, GROUPS, RATING_SCALE, awardById } from './awards.js?v=20261019-patient-tech2';
 import { NURSES, ATTENDANTS } from './staff.js';
-import { getState, nominate, eligibleFor } from './api.js?v=20261019-patient-tech';
+import { getState, nominate, eligibleFor } from './api.js?v=20261019-patient-tech2';
 import { el, $, initShell, toast, setBusy, displayName } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
 
@@ -55,15 +55,8 @@ function renderCriteria() {
 
 function renderForm() {
   const eligible = eligibleFor(award);
-  const options = (names) => names.map((name) => el('option', { value: name, text: name }));
-  if (award.id === 'patient-choice') {
-    $('#nominee').append(
-      el('optgroup', { label: 'Nurses' }, options(NURSES)),
-      el('optgroup', { label: 'Dialysis Technicians' }, options(ATTENDANTS)),
-    );
-  } else {
-    $('#nominee').append(...options(eligible));
-  }
+  const names = award.id === 'patient-choice' ? [...eligible].sort((a, b) => a.localeCompare(b)) : eligible;
+  $('#nominee').append(...names.map((name) => el('option', { value: name, text: name })));
   $('#nominee-label').textContent = award.id === 'patient-choice' ? 'Your vote (nurse or dialysis technician)' : isVote ? 'Your vote' : `Nominee (${GROUPS[award.group].noun})`;
   $('#nominate-title').textContent = isVote ? 'Vote' : 'Nominate';
   $('#nominate-submit').textContent = isVote ? 'Send vote' : 'Send nomination';
