@@ -105,3 +105,7 @@ node --test tests/scoring.test.mjs
 
 Score requests have a timeout. If a response is lost, the page checks the evaluator's stored ratings before retrying the same score once. Server refusals such as a closed deadline are never retried.
 Unsent ratings are kept on the same browser/device, separately for each evaluator, award, and nominee. Drafts contain ratings, not the committee PIN, and are cleared after a confirmed save. A failed confirmation leaves the ratings available to retry instead of reporting them as saved.
+
+### Score saving performance
+
+The backend reuses workbook and tab handles within each request and reads score rows from the already-open Scores tab. Values are still read fresh while holding the same write lock; deadlines and evaluator-specific updates are unchanged. Deploy the updated `apps-script/Code.gs` as a new version of the existing web app to enable this server improvement. Keep the existing deployment URL and Script Properties.

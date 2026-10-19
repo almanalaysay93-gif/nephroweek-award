@@ -149,7 +149,7 @@ function nomineeCard(award, nominee, i) {
       const score = { awardId: award.id, nominee, evaluator: me.evaluator, ratings: [...ratings] };
       const result = await saveScore(me.pin, score, me.username, {
         onStatus: (stage) => {
-          status.textContent = stage === 'checking' ? 'Checking whether the score saved…' : stage === 'retrying' ? 'Reconnecting and retrying…' : 'Saving…';
+          status.textContent = stage === 'checking' ? 'Checking whether the score saved…' : stage === 'retrying' ? 'Reconnecting and retrying…' : 'Saving… You can score another nominee while waiting.';
           setBusy(button, true, stage === 'checking' ? 'Checking' : stage === 'retrying' ? 'Retrying' : 'Saving');
         },
       });

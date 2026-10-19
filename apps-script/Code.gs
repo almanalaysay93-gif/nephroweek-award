@@ -135,7 +135,7 @@ var HANDLERS = {
     if (!valid) return fail_('Rate every criterion from 1 to 5.');
     return locked_(function () {
       var sheet = tab_('Scores');
-      var rows = rows_('Scores');
+      var rows = sheetRows_(sheet, 'Scores');
       var record = [new Date(), s.awardId, safe_(nominee), safe_(evaluator), JSON.stringify(r)];
       for (var i = 0; i < rows.length; i++) {
         if (rows[i][1] === s.awardId && norm_(rows[i][2]) === norm_(nominee) && norm_(rows[i][3]) === norm_(evaluator)) {
@@ -207,19 +207,27 @@ function pinOk_(pin) {
   return !!real && String(pin || '') === real;
 }
 
+// Request-local handles only: score values are always read fresh under the lock.
+var workbookHandle_;
+var sheetHandles_ = {};
 function tab_(name) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (sheetHandles_[name]) return sheetHandles_[name];
+  var ss = workbookHandle_ || (workbookHandle_ = SpreadsheetApp.openById(SPREADSHEET_ID));
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(TABS[name]);
     sheet.setFrozenRows(1);
   }
+  sheetHandles_[name] = sheet;
   return sheet;
 }
 
 function rows_(name) {
-  var sheet = tab_(name);
+  return sheetRows_(tab_(name), name);
+}
+
+function sheetRows_(sheet, name) {
   var last = sheet.getLastRow();
   if (last < 2) return [];
   return sheet.getRange(2, 1, last - 1, TABS[name].length).getValues();
