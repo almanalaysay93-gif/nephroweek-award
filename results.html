@@ -34,11 +34,15 @@
     <section class="gate glass" id="gate" aria-labelledby="gate-title" data-reveal>
       <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
       <h1 id="gate-title">Results</h1>
-      <p class="lede">The tally is for the selection committee. Enter the committee PIN.</p>
+      <p class="lede">The tally is for the selection committee. Enter your committee username and PIN.</p>
       <form id="gate-form" novalidate>
         <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" maxlength="80" required>
+        </div>
+        <div class="field">
           <label for="pin">Committee PIN</label>
-          <input id="pin" name="pin" type="password" autocomplete="off" maxlength="64" required>
+          <input id="pin" name="pin" type="password" autocomplete="current-password" maxlength="64" required>
         </div>
         <p class="form-msg" id="gate-msg" role="alert"></p>
         <button class="btn btn--primary btn--block" type="submit" id="gate-submit">Open the tally</button>

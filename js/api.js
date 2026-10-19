@@ -4,7 +4,7 @@ import { NURSES, ATTENDANTS } from './staff.js';
 import { normName, nominationError, validRatings } from './scoring.js';
 
 export const DEMO = !ENDPOINT;
-// Demo mode only (empty ENDPOINT). The live PIN is a script property in Apps Script, never in this repository.
+// Demo mode only (empty ENDPOINT). Live credentials are script properties in Apps Script, never in this repository.
 const DEMO_PIN = 'demo';
 const KEY = 'nnw26-demo';
 
@@ -55,13 +55,13 @@ const local = {
     save(db);
     return publicView(db);
   },
-  committee: ({ pin }) => {
-    if (pin !== DEMO_PIN) return { ok: false, error: 'Wrong PIN.' };
+  committee: ({ username, pin }) => {
+    if (username !== 'admin' || pin !== DEMO_PIN) return { ok: false, error: 'Wrong username or PIN.' };
     const db = load();
     return { ok: true, nominations: db.nominations, scores: db.scores, winners: db.winners };
   },
-  score: ({ pin, score }) => {
-    if (pin !== DEMO_PIN) return { ok: false, error: 'Wrong PIN.' };
+  score: ({ username, pin, score }) => {
+    if (username !== 'admin' || pin !== DEMO_PIN) return { ok: false, error: 'Wrong username or PIN.' };
     const db = load();
     const same = (s) => s.awardId === score.awardId
       && normName(s.nominee) === normName(score.nominee)
@@ -71,8 +71,8 @@ const local = {
     save(db);
     return { ok: true };
   },
-  publish: ({ pin, winners }) => {
-    if (pin !== DEMO_PIN) return { ok: false, error: 'Wrong PIN.' };
+  publish: ({ username, pin, winners }) => {
+    if (username !== 'admin' || pin !== DEMO_PIN) return { ok: false, error: 'Wrong username or PIN.' };
     const db = load();
     db.winners = winners;
     save(db);
@@ -105,14 +105,14 @@ export async function nominate(nomination) {
   return call('nominate', { nomination: clean });
 }
 
-export const getCommittee = (pin) => call('committee', { pin });
+export const getCommittee = (pin, username) => call('committee', { pin, username });
 
-export async function saveScore(pin, score) {
+export async function saveScore(pin, score, username) {
   const award = awardById(score.awardId);
   if (!award || award.type !== 'scored') throw new Error('This award is not scored.');
   if (!normName(score.evaluator)) throw new Error('Enter your name.');
   if (!validRatings(score.ratings, award.criteria)) throw new Error('Rate every criterion from 1 to 5.');
-  return call('score', { pin, score });
+  return call('score', { pin, score, username });
 }
 
-export const publishWinners = (pin, winners) => call('publish', { pin, winners });
+export const publishWinners = (pin, winners, username) => call('publish', { pin, winners, username });

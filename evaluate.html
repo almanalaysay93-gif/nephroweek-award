@@ -34,15 +34,19 @@
     <section class="gate glass" id="gate" aria-labelledby="gate-title" data-reveal>
       <img class="gate__seal" src="assets/logo-192.webp" width="72" height="72" alt="">
       <h1 id="gate-title">Committee scoring</h1>
-      <p class="lede">Sign in with your name and the committee PIN.</p>
+      <p class="lede">Sign in with your committee username and PIN. Enter your name to identify your scores.</p>
       <form id="gate-form" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" maxlength="80" required>
+        </div>
         <div class="field">
           <label for="evaluator">Your name</label>
           <input id="evaluator" name="evaluator" type="text" autocomplete="name" maxlength="80" required>
         </div>
         <div class="field">
           <label for="pin">Committee PIN</label>
-          <input id="pin" name="pin" type="password" autocomplete="off" maxlength="64" required>
+          <input id="pin" name="pin" type="password" autocomplete="current-password" maxlength="64" required>
         </div>
         <p class="form-msg" id="gate-msg" role="alert"></p>
         <button class="btn btn--primary btn--block" type="submit" id="gate-submit">Sign in</button>

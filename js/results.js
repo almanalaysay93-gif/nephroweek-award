@@ -5,6 +5,7 @@ import { el, $, initShell, toast, setBusy, displayName, reveal, session } from '
 import { avatar, setPhotoMap } from './photos.js';
 
 let pin = null;
+let username = null;
 let data = null;
 
 function ranking(award) {
@@ -82,7 +83,7 @@ function render() {
 }
 
 async function load() {
-  data = await getCommittee(pin);
+  data = await getCommittee(pin, username);
   setPhotoMap(data.photos);
   render();
 }
@@ -93,12 +94,14 @@ $('#gate-form').addEventListener('submit', async (event) => {
   const msg = $('#gate-msg');
   const button = $('#gate-submit');
   msg.textContent = '';
+  if (!form.username.value.trim()) { msg.textContent = 'Enter your username.'; form.username.focus(); return; }
   if (!form.pin.value) { msg.textContent = 'Enter the committee PIN.'; form.pin.focus(); return; }
   setBusy(button, true, 'Opening');
   try {
+    username = form.username.value.trim();
     pin = form.pin.value;
     await load();
-    session.set({ ...(session.get() || {}), pin });
+    session.set({ ...(session.get() || {}), username, pin });
     $('#gate').hidden = true;
     $('#results').hidden = false;
     $('#results-title').focus();
@@ -117,10 +120,10 @@ $('#publish-btn').addEventListener('click', async (event) => {
   setBusy(button, true, 'Working');
   try {
     // Read fresh data first, so the snapshot matches the newest scores.
-    data = await getCommittee(pin);
+    data = await getCommittee(pin, username);
     const next = data.winners ? null : winnersSnapshot();
     if (next && !Object.keys(next).length) throw new Error('No award has a ranked nominee yet.');
-    await publishWinners(pin, next);
+    await publishWinners(pin, next, username);
     data.winners = next;
     render();
     toast(next ? 'Awardees published.' : 'Awardees unpublished.', 'success');
@@ -142,7 +145,8 @@ $('#refresh-btn').addEventListener('click', async (event) => {
 
 initShell();
 const saved = session.get();
-if (saved?.pin) {
+if (saved?.username && saved?.pin) {
+  username = saved.username;
   pin = saved.pin;
   load().then(() => { $('#gate').hidden = true; $('#results').hidden = false; }).catch(() => { pin = null; });
 }

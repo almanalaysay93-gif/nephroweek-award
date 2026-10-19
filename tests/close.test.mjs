@@ -94,6 +94,47 @@ const settingOf = (data, key) => {
   return row ? row[1] : undefined;
 };
 
+test('committee login requires admin and the configured PIN', () => {
+  const b = makeBackend();
+  assert.equal(b.ctx.HANDLERS.committee({ username: 'admin', pin: PIN }).ok, true);
+  for (const credentials of [
+    { pin: PIN },
+    { username: 'someone-else', pin: PIN },
+    { username: 'admin', pin: 'incorrect' },
+    { username: 'admin' },
+    {},
+  ]) {
+    const out = plain(b.ctx.HANDLERS.committee(credentials));
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'Wrong username or PIN.');
+    assert.equal(out.nominations, undefined);
+  }
+});
+
+test('score and publish reject a missing or incorrect username', () => {
+  const b = makeBackend();
+  for (const action of ['score', 'publish']) {
+    for (const username of [undefined, 'someone-else']) {
+      const out = plain(b.ctx.HANDLERS[action]({ username, pin: PIN, winners: { test: [] } }));
+      assert.equal(out.ok, false);
+      assert.equal(out.error, 'Wrong username or PIN.');
+    }
+  }
+  assert.equal(rowsOf(b.data, 'Scores').length, 0);
+  assert.equal(settingOf(b.data, 'winners'), undefined);
+});
+
+test('authenticated scores preserve evaluator identity and publishing still works', () => {
+  const b = makeBackend();
+  b.clock.now = b.close - 1;
+  const score = { awardId: 'hd-nurse', nominee: 'CRUZ, Ana', evaluator: 'Nurse Evaluator', ratings: [5, 5, 5, 5, 5] };
+  assert.equal(b.ctx.HANDLERS.score({ username: 'admin', pin: PIN, score }).ok, true);
+  assert.equal(rowsOf(b.data, 'Scores')[0][3], 'Nurse Evaluator');
+  const winners = { 'hd-nurse': [{ nominee: 'CRUZ, Ana', value: 100 }] };
+  assert.equal(b.ctx.HANDLERS.publish({ username: 'admin', pin: PIN, winners }).ok, true);
+  assert.deepEqual(JSON.parse(settingOf(b.data, 'winners')), winners);
+});
+
 test('weights in Code.gs match js/awards.js', () => {
   const { ctx } = makeBackend();
   for (const [id, weights] of Object.entries(ctx.WEIGHTS)) {
@@ -123,7 +164,7 @@ test('gate: writes succeed before close and are refused after', () => {
   const after = plain(b.ctx.HANDLERS.nominate({ nomination: { ...nom, nominator: 'Cora Lim' } }));
   assert.equal(after.ok, false);
   assert.match(after.error, /Voting is closed/);
-  const score = plain(b.ctx.HANDLERS.score({ pin: PIN, score: { awardId: 'hd-nurse', nominee: 'CRUZ, Ana', evaluator: 'E1', ratings: [5, 5, 5, 5, 5] } }));
+  const score = plain(b.ctx.HANDLERS.score({ username: 'admin', pin: PIN, score: { awardId: 'hd-nurse', nominee: 'CRUZ, Ana', evaluator: 'E1', ratings: [5, 5, 5, 5, 5] } }));
   assert.equal(score.ok, false);
   assert.match(score.error, /Voting is closed/);
   assert.equal(rowsOf(b.data, 'Nominations').length, 1);

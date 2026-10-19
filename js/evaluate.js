@@ -4,7 +4,7 @@ import { normName, weightedTotal, validRatings, rankVotes } from './scoring.js';
 import { el, $, initShell, toast, setBusy, displayName, reveal, session } from './ui.js';
 import { avatar, setPhotoMap } from './photos.js';
 
-let me = null;      // { evaluator, pin }
+let me = null;      // { evaluator, username, pin }
 let data = null;    // { nominations, scores }
 let current = AWARDS[0].id;
 
@@ -134,7 +134,7 @@ function nomineeCard(award, nominee, i) {
     setBusy(button, true, 'Saving');
     try {
       const score = { awardId: award.id, nominee, evaluator: me.evaluator, ratings: [...ratings] };
-      await saveScore(me.pin, score);
+      await saveScore(me.pin, score, me.username);
       data.scores = data.scores.filter((s) => s !== myScore(award, nominee));
       data.scores.push(score);
       status.textContent = 'Saved';
@@ -212,7 +212,7 @@ function renderPanel(focus) {
 }
 
 async function enter(credentials) {
-  data = await getCommittee(credentials.pin);
+  data = await getCommittee(credentials.pin, credentials.username);
   setPhotoMap(data.photos);
   me = credentials;
   session.set(me);
@@ -232,12 +232,14 @@ $('#gate-form').addEventListener('submit', async (event) => {
   const msg = $('#gate-msg');
   const button = $('#gate-submit');
   msg.textContent = '';
+  const username = form.username.value.trim();
+  if (!username) { msg.textContent = 'Enter your username.'; form.username.focus(); return; }
   const evaluator = form.evaluator.value.trim().replace(/\s+/g, ' ');
   if (!evaluator) { msg.textContent = 'Enter your name.'; form.evaluator.focus(); return; }
   if (!form.pin.value) { msg.textContent = 'Enter the committee PIN.'; form.pin.focus(); return; }
   setBusy(button, true, 'Signing in');
   try {
-    await enter({ evaluator, pin: form.pin.value });
+    await enter({ evaluator, username, pin: form.pin.value });
   } catch (error) {
     msg.textContent = error.message === 'Failed to fetch' ? 'No connection to the server.' : error.message;
     form.dispatchEvent(new CustomEvent('form:error', { bubbles: true }));
@@ -250,10 +252,10 @@ $('#sign-out').addEventListener('click', () => { session.clear(); location.reloa
 
 initShell();
 const saved = session.get();
-if (saved?.evaluator && saved?.pin) {
+if (saved?.evaluator && saved?.username && saved?.pin) {
   enter(saved).catch((error) => {
     // A network drop keeps the session. Only a refused PIN clears it.
-    if (error.message === 'Wrong PIN.') session.clear();
+    if (error.message === 'Wrong username or PIN.') session.clear();
     else $('#gate-msg').textContent = 'No connection to the server. Sign in again when the connection is back.';
   });
 }

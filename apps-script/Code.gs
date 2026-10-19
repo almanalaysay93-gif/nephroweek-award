@@ -3,7 +3,7 @@
  *
  * Setup:
  * 1. Create a Google Sheet. Open Extensions > Apps Script and paste this file.
- * 2. Project Settings > Script Properties: add COMMITTEE_PIN with a PIN of 8 characters or more.
+ * 2. Project Settings > Script Properties: add COMMITTEE_USERNAME (admin) and COMMITTEE_PIN with a PIN of 8 characters or more.
  * 3. Deploy > New deployment > Web app. Execute as: Me. Who has access: Anyone.
  * 4. Paste the /exec address into js/config.js.
  *
@@ -97,7 +97,7 @@ var HANDLERS = {
   },
 
   committee: function (req) {
-    if (!pinOk_(req.pin)) return fail_('Wrong PIN.');
+    if (!committeeOk_(req)) return fail_('Wrong username or PIN.');
     return {
       ok: true,
       nominations: rows_('Nominations').map(function (r) {
@@ -113,7 +113,7 @@ var HANDLERS = {
   },
 
   score: function (req) {
-    if (!pinOk_(req.pin)) return fail_('Wrong PIN.');
+    if (!committeeOk_(req)) return fail_('Wrong username or PIN.');
     if (isClosed_(Date.now())) return closed_();
     var s = req.score || {};
     var award = award_(s.awardId);
@@ -143,7 +143,7 @@ var HANDLERS = {
   },
 
   publish: function (req) {
-    if (!pinOk_(req.pin)) return fail_('Wrong PIN.');
+    if (!committeeOk_(req)) return fail_('Wrong username or PIN.');
     return locked_(function () {
       setSetting_('winners', req.winners ? JSON.stringify(req.winners) : '');
       return { ok: true };
@@ -188,6 +188,12 @@ function publicPhotos_() {
     if (id && key && !map[key]) map[key] = id;
   });
   return map;
+}
+
+function committeeOk_(req) {
+  var props = PropertiesService.getScriptProperties();
+  var username = props.getProperty('COMMITTEE_USERNAME') || 'admin';
+  return String(req.username || '').trim() === username && pinOk_(req.pin);
 }
 
 function pinOk_(pin) {

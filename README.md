@@ -7,7 +7,7 @@ The award criteria and weights come from the Nephrology Nurses Week 2026 proposa
 
 - The home page lists 14 awards: 9 nurse awards and 5 dialysis technician awards.
 - Each award has one page with the coverage, the criteria, a nomination form, and the nominee list.
-- Each evaluator signs in with a name and the committee PIN.
+- Each evaluator signs in with the committee username and PIN, plus their own name for score attribution.
 - Each evaluator rates each criterion from 1 to 5.
 - The app applies the weights and shows a total out of 100.
 - The Results page ranks the nominees by the average total of all evaluators.
@@ -46,7 +46,7 @@ Then open `http://localhost:5173`.
 
 While `ENDPOINT` in `js/config.js` is empty, the app is in demo mode.
 In demo mode the data stays in one browser.
-The demo committee PIN is the value of `DEMO_PIN` in `js/api.js`.
+The demo username is `admin`. The demo committee PIN is the value of `DEMO_PIN` in `js/api.js`.
 
 ## Connect the Google Sheet
 
@@ -54,7 +54,7 @@ The demo committee PIN is the value of `DEMO_PIN` in `js/api.js`.
 2. Open Extensions, then Apps Script.
 3. Paste the content of `apps-script/Code.gs`.
 4. Open Project Settings, then Script Properties.
-5. Add the property `COMMITTEE_PIN` with a PIN of 8 characters or more.
+5. Add `COMMITTEE_USERNAME` with the value `admin`, and `COMMITTEE_PIN` with the chosen PIN of 8 characters or more. Keep credentials in Script Properties, not repository files.
 6. Select Deploy, then New deployment, then Web app.
 7. Set "Execute as" to Me and "Who has access" to Anyone.
 8. Copy the address that ends in `/exec`.
