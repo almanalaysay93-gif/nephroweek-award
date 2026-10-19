@@ -15,7 +15,7 @@ const HEADERS = {
 };
 
 // A small stand-in for the Apps Script services the backend uses.
-function makeBackend(initial = {}) {
+function makeBackend(initial = {}, options = {}) {
   const data = {};
   for (const name of Object.keys(HEADERS)) data[name] = [HEADERS[name].slice()];
   for (const [name, rows] of Object.entries(initial)) data[name] = rows.map((r) => r.slice());
@@ -49,6 +49,35 @@ function makeBackend(initial = {}) {
     getSheetByName(name) { return data[name] ? sheet(name) : null; },
     insertSheet(name) { data[name] = []; return sheet(name); },
   };
+  const files = new Map();
+  const mails = [];
+  let nextFile = 0;
+  let mailAttempts = 0;
+  let exports = 0;
+  const pptxMime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  function blob(type, name, size = 100) {
+    return {
+      type, name, size,
+      setName(value) { this.name = value; return this; },
+      setContentType(value) { this.type = value; return this; },
+      getBytes() { return { length: this.size }; },
+    };
+  }
+  function file(id) {
+    const record = files.get(id);
+    return {
+      getId: () => id,
+      getUrl: () => 'https://docs.google.com/presentation/d/' + id + '/edit',
+      getMimeType: () => record ? record.type : options.templateMime || 'application/vnd.google-apps.presentation',
+      makeCopy: (name) => {
+        const key = 'slide-' + (++nextFile);
+        files.set(key, { type: 'application/vnd.google-apps.presentation', name });
+        return file(key);
+      },
+      getAs: (type) => blob(type, id + '.pdf'),
+      getBlob: () => blob(record.type, record.name, record.size),
+    };
+  }
   Object.assign(ctx, {
     SpreadsheetApp: {
       openById: (id) => {
@@ -61,18 +90,33 @@ function makeBackend(initial = {}) {
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ setMimeType() { return t; } }) },
     Logger: { log() {} },
-    // No-op Drive, Slides, and Gmail for the certificate step that runs after posting.
     DriveApp: {
-      getFileById: () => ({
-        makeCopy: () => ({ getId: () => 'copy', getUrl: () => 'url', getAs: () => ({}) }),
-        getBlob: () => ({}),
-      }),
-      createFile: () => ({ getId: () => 'pdf' }),
+      getFileById: file,
+      createFile: (b) => {
+        const id = 'file-' + (++nextFile);
+        files.set(id, { type: b.type, name: b.name, size: b.size });
+        return file(id);
+      },
     },
     SlidesApp: { openById: () => ({ replaceAllText() {}, saveAndClose() {} }) },
-    MailApp: { sendEmail() {} },
+    MailApp: { sendEmail: (message) => {
+      mailAttempts++;
+      if (mailAttempts === options.failMailAt) throw new Error('Temporary email failure');
+      assert.ok(message.attachments.reduce((sum, b) => sum + b.size, 0) <= 18 * 1024 * 1024);
+      mails.push(message);
+    } },
+    UrlFetchApp: { fetch: (url, opts) => {
+      assert.match(url, /googleapis\.com\/drive\/v3\/files\/.+\/export\?mimeType=/);
+      assert.equal(opts.headers.Authorization, 'Bearer test-token');
+      exports++;
+      return {
+        getResponseCode: () => exports === options.failExportAt ? 503 : 200,
+        getBlob: () => blob(pptxMime, 'export.pptx', options.pptxBytes || 100),
+      };
+    } },
     MimeType: { PDF: 'application/pdf' },
     ScriptApp: {
+      getOAuthToken: () => 'test-token',
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (t) => { triggers.splice(triggers.indexOf(t), 1); },
       newTrigger: (fn) => {
@@ -90,7 +134,7 @@ function makeBackend(initial = {}) {
   vm.createContext(ctx);
   vm.runInContext('Date.now = function () { return __clock.now; };', ctx);
   vm.runInContext(CODE, ctx);
-  return { ctx, data, triggers, clock, close: ctx.CLOSE_AT.getTime() };
+  return { ctx, data, triggers, clock, files, mails, close: ctx.CLOSE_AT.getTime() };
 }
 
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -331,13 +375,17 @@ test('previewClose returns winners and writes nothing', () => {
   assert.equal(settingOf(b.data, 'closeLog'), undefined);
 });
 
-test('installCloseTrigger leaves exactly one trigger at 12:00 noon Manila on 23 Oct', () => {
+test('setup installs one email trigger on October 20 and one announcement trigger on October 23', () => {
   const b = makeBackend();
   b.ctx.installCloseTrigger();
   b.ctx.installCloseTrigger();
   const mine = b.triggers.filter((t) => t.getHandlerFunction() === 'closeAndPublish');
   assert.equal(mine.length, 1);
   assert.equal(mine[0].when.getTime(), b.ctx.ANNOUNCE_AT.getTime());
+  const email = b.triggers.filter((t) => t.getHandlerFunction() === 'sendAwardCertificates');
+  assert.equal(email.length, 1);
+  assert.equal(email[0].when.toISOString(), '2026-10-20T04:00:00.000Z');
+  assert.equal(b.triggers.length, 2);
 });
 
 test('public state: announced flips at 23 Oct 12:00 noon Manila, not at voting close', () => {
@@ -374,4 +422,69 @@ test('one person per award: spacing and capitals do not duplicate a nominee', ()
   assert.equal(pub.nominees['hd-nurse'].length, 2);
   const cruz = pub.nominees['hd-nurse'].find((r) => /cruz/i.test(r.nominee));
   assert.equal(cruz.count, 2, 'both nominations count for one person');
+});
+
+
+test('certificates refuse early sending and email PPTX plus PDF privately at the October 20 deadline', () => {
+  const b = makeBackend({ Nominations: [HEADERS.Nominations, ['t', 'hd-nurse', 'CRUZ, Ana', 'A', 'reason']] });
+  b.clock.now = b.close - 1;
+  assert.equal(b.ctx.sendAwardCertificates().ok, false);
+  assert.equal(b.mails.length, 0);
+  assert.equal(settingOf(b.data, 'certificateWinners'), undefined);
+  b.clock.now = b.close;
+  assert.deepEqual(plain(b.ctx.sendAwardCertificates()), { ok: true, sent: 1 });
+  assert.equal(b.mails.length, 1);
+  assert.equal(b.mails[0].to, 'nncluster@spmcdvo.net');
+  assert.deepEqual(plain(b.mails[0].attachments.map((a) => a.type)), [b.ctx.CERT_PPTX_MIME, 'application/pdf']);
+  assert.match(b.mails[0].body, /PPTX and PDF/);
+  assert.equal(settingOf(b.data, 'winners'), undefined, 'public winners are not announced early');
+  const snapshot = JSON.parse(settingOf(b.data, 'certificateWinners'));
+  assert.deepEqual(snapshot['hd-nurse'], [{ nominee: 'CRUZ, Ana', value: 1, basis: 'nominations' }]);
+  assert.equal(b.ctx.publicView_().winners, null);
+  assert.equal(JSON.parse(settingOf(b.data, 'certificateEmailLog')).status, 'ok');
+  const count = b.files.size;
+  assert.deepEqual(plain(b.ctx.sendAwardCertificates()), { ok: true, sent: 0 });
+  assert.equal(b.mails.length, 1);
+  assert.equal(b.files.size, count, 'retry reuses generated files');
+  b.clock.now = b.ctx.ANNOUNCE_AT.getTime();
+  b.ctx.closeAndPublish();
+  assert.deepEqual(JSON.parse(settingOf(b.data, 'winners')), snapshot);
+  assert.equal(b.mails.length, 1, 'October 23 posting does not resend certificates');
+});
+
+test('PPTX export failure retains the private snapshot and retries without copying a second certificate', () => {
+  const b = makeBackend({ Nominations: [HEADERS.Nominations, ['t', 'hd-nurse', 'CRUZ, Ana', 'A', 'reason']] }, { failExportAt: 1 });
+  b.clock.now = b.close;
+  assert.throws(() => b.ctx.sendAwardCertificates(), /PPTX export failed/);
+  assert.equal(b.mails.length, 0);
+  assert.equal(settingOf(b.data, 'winners'), undefined);
+  assert.equal(JSON.parse(settingOf(b.data, 'certificateEmailLog')).status, 'error');
+  assert.equal([...b.files.values()].filter((f) => f.type === b.ctx.CERT_SLIDES_MIME).length, 1);
+  assert.equal(b.ctx.sendAwardCertificates().sent, 1);
+  assert.equal([...b.files.values()].filter((f) => f.type === b.ctx.CERT_SLIDES_MIME).length, 1);
+});
+
+test('large attachment sets are batched, and a retry skips batches already emailed', () => {
+  const b = makeBackend({ Nominations: [HEADERS.Nominations,
+    ['t', 'hd-nurse', 'CRUZ, Ana', 'A', 'reason'],
+    ['t', 'pd-nurse', 'LIM, Bo', 'B', 'reason'],
+    ['t', 'nephro-nurse', 'REYES, Ben', 'C', 'reason'],
+  ] }, { pptxBytes: 10 * 1024 * 1024, failMailAt: 2 });
+  b.clock.now = b.close;
+  assert.throws(() => b.ctx.sendAwardCertificates(), /Temporary email failure/);
+  assert.equal(b.mails.length, 1);
+  assert.equal(JSON.parse(settingOf(b.data, 'certificatesSent')).length, 1);
+  const count = b.files.size;
+  assert.equal(b.ctx.sendAwardCertificates().sent, 2);
+  assert.equal(b.mails.length, 3);
+  assert.equal(b.files.size, count);
+  assert.equal(new Set(JSON.parse(settingOf(b.data, 'certificatesSent'))).size, 3);
+  assert.ok(b.mails.every((m) => m.attachments.length === 2));
+});
+
+test('invalid template does not replace already installed automation triggers', () => {
+  const b = makeBackend({}, { templateMime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+  b.triggers.push({ getHandlerFunction: () => 'unrelatedHandler' });
+  assert.throws(() => b.ctx.installAutomationTriggers(), /native Google Slides/);
+  assert.equal(b.triggers.length, 1);
 });

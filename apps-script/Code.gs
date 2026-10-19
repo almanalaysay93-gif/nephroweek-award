@@ -28,6 +28,8 @@ var CLOSE_LABEL = '20 October 2026, 12:00 noon Manila time';
 // Winners are posted on the landing page at 12:00 noon Manila time on 23 October 2026.
 var ANNOUNCE_AT = new Date('2026-10-23T12:00:00+08:00');
 var ANNOUNCE_LABEL = '23 October 2026, 12:00 noon Manila time';
+// Email the committee privately when voting closes; publish winners on October 23.
+var CERT_EMAIL_AT = new Date('2026-10-20T12:00:00+08:00');
 
 // Criterion weights per scored award, in the order of js/awards.js.
 var WEIGHTS = {
@@ -110,6 +112,8 @@ var HANDLERS = {
       winners: winners_(),
       photos: publicPhotos_(),
       closed: isClosed_(Date.now()),
+      certificateEmailAt: CERT_EMAIL_AT.toISOString(),
+      certificateEmailLog: settingValue_('certificateEmailLog'),
       closeLog: settingValue_('closeLog')
     };
   },
@@ -427,7 +431,7 @@ function closeAndPublish() {
         return fail_('Too early.');
       }
       var existing = winners_() || {};
-      var computed = computeWinners_();
+      var computed = settingValue_('certificateWinners') || computeWinners_();
       var added = [];
       Object.keys(computed).forEach(function (id) {
         if (existing[id]) return;
@@ -453,12 +457,39 @@ function previewClose() {
   return preview;
 }
 
-// Run once from the Apps Script editor. Replaces any earlier close trigger.
-function installCloseTrigger() {
+// Run once from the editor and approve permissions. Safe to run again.
+function installAutomationTriggers() {
+  validateCertificateTemplate_();
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'closeAndPublish') ScriptApp.deleteTrigger(t);
+    if (['closeAndPublish', 'sendAwardCertificates'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
+  ScriptApp.newTrigger('sendAwardCertificates').timeBased().at(CERT_EMAIL_AT).create();
   ScriptApp.newTrigger('closeAndPublish').timeBased().at(ANNOUNCE_AT).create();
+}
+
+// Preserve the existing setup command while installing both automations.
+function installCloseTrigger() { return installAutomationTriggers(); }
+
+// The email snapshot stays private until the announcement trigger publishes it.
+function sendAwardCertificates() {
+  return locked_(function () {
+    if (Date.now() < CERT_EMAIL_AT.getTime() || !isClosed_(Date.now())) return fail_('Too early. Certificates are emailed on 20 October 2026 at 12:00 noon Manila time.');
+    try {
+      var snapshot = settingValue_('certificateWinners');
+      if (!snapshot) {
+        snapshot = winners_() || {};
+        var computed = computeWinners_();
+        Object.keys(computed).forEach(function (id) { if (!snapshot[id]) snapshot[id] = computed[id]; });
+        setSetting_('certificateWinners', JSON.stringify(snapshot));
+      }
+      var result = makeAndSendCertificates_(snapshot);
+      setSetting_('certificateEmailLog', JSON.stringify({ at: new Date().toISOString(), status: 'ok', sent: result.sent, recipient: CERT_RECIPIENT }));
+      return result;
+    } catch (err) {
+      setSetting_('certificateEmailLog', JSON.stringify({ at: new Date().toISOString(), status: 'error', message: String(err) }));
+      throw err;
+    }
+  });
 }
 
 // ---- Certificates of award (editable Google Slides, one per winner) ----
@@ -467,7 +498,10 @@ var CERT_EVENT = 'Nephrology Nurses Week 2026';
 var CERT_DATE = '23rd day of October, 2026';
 var CERT_RECIPIENT = 'nncluster@spmcdvo.net';
 // Google Slides template: placeholders {{NAME}}, {{AWARD}}, {{CITATION}}, {{EVENT}}, {{DATE}}.
-var CERT_TEMPLATE_ID = '1Q0cVE9q4iKW3ZEZDII_fw_2RZfKXwywC';
+var CERT_TEMPLATE_ID = '1Frx4kie2fDbHSvbScAcJZSXdDNQa4xIO2a17t8GrUQ0';
+var CERT_SLIDES_MIME = 'application/vnd.google-apps.presentation';
+var CERT_PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+var CERT_EMAIL_MAX_BYTES = 18 * 1024 * 1024;
 var CERT_SIGNERS = [
   { name: 'Janie Bib J. Martel, RN', title: 'Clinical Coordinator/Nurse IV' },
   { name: 'Darwin E. Peñas, RN, MAN', title: 'Department Head' }
@@ -563,39 +597,87 @@ function certificateRecipients_(winners) {
   return out;
 }
 
-// Makes a certificate for each new winner, then emails the ones not yet sent.
-// Safe to run again: made certificates and sent emails are recorded in Settings.
-function makeAndSendCertificates_() {
-  var templateId = CERT_TEMPLATE_ID;
+function validateCertificateTemplate_() {
+  var file = DriveApp.getFileById(CERT_TEMPLATE_ID);
+  if (file.getMimeType() !== CERT_SLIDES_MIME) throw new Error('The certificate template must be a native Google Slides presentation.');
+  return file;
+}
+
+function exportCertificatePptx_(slideId, filename) {
+  var response = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(slideId) + '/export?mimeType=' + encodeURIComponent(CERT_PPTX_MIME), {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) throw new Error('PPTX export failed (HTTP ' + response.getResponseCode() + '). Run sendAwardCertificates again to retry.');
+  return response.getBlob().setContentType(CERT_PPTX_MIME).setName(filename + '.pptx');
+}
+
+// Save generated file IDs before emailing. Retrying reuses files and skips sent batches.
+function makeAndSendCertificates_(snapshot) {
+  var recipients = certificateRecipients_(snapshot || winners_() || {});
   var made = settingValue_('certificates') || {};
   var sent = settingValue_('certificatesSent') || [];
-  var fresh = certificateRecipients_(winners_() || {}).filter(function (r) { return !made[r.key]; });
-  fresh.forEach(function (r) {
-    var copy = DriveApp.getFileById(templateId).makeCopy('Certificate - ' + r.name + ' - ' + r.award);
-    var pres = SlidesApp.openById(copy.getId());
-    pres.replaceAllText('{{EVENT}}', CERT_EVENT);
-    pres.replaceAllText('{{NAME}}', r.name);
-    pres.replaceAllText('{{AWARD}}', r.award);
-    pres.replaceAllText('{{CITATION}}', r.citation);
-    pres.replaceAllText('{{DATE}}', CERT_DATE);
-    pres.saveAndClose();
-    var pdf = DriveApp.createFile(copy.getAs(MimeType.PDF));
-    made[r.key] = { award: r.award, name: r.name, slideUrl: copy.getUrl(), pdfId: pdf.getId() };
-  });
-  // Save before sending, so a failed email does not make duplicate certificates on the next run.
-  if (fresh.length) setSetting_('certificates', JSON.stringify(made));
-  var pending = Object.keys(made).filter(function (k) { return sent.indexOf(k) < 0; });
+  var pending = recipients.filter(function (r) { return sent.indexOf(r.key) < 0; });
   if (!pending.length) return { ok: true, sent: 0 };
-  MailApp.sendEmail({
-    to: CERT_RECIPIENT,
-    subject: 'Certificates of award: ' + CERT_EVENT,
-    body: 'Editable certificates (Google Slides) with PDF copies attached.\n\n' + pending.map(function (k) {
-      return made[k].award + ' - ' + made[k].name + '\n' + made[k].slideUrl;
-    }).join('\n\n'),
-    attachments: pending.map(function (k) { return DriveApp.getFileById(made[k].pdfId).getBlob(); })
+  var template = validateCertificateTemplate_();
+  pending.forEach(function (r) {
+    var filename = 'Certificate - ' + r.name + ' - ' + r.award;
+    var record = made[r.key];
+    if (!record) {
+      var copy = template.makeCopy(filename);
+      var pres = SlidesApp.openById(copy.getId());
+      pres.replaceAllText('{{EVENT}}', CERT_EVENT);
+      pres.replaceAllText('{{NAME}}', r.name);
+      pres.replaceAllText('{{AWARD}}', r.award);
+      pres.replaceAllText('{{CITATION}}', r.citation);
+      pres.replaceAllText('{{DATE}}', CERT_DATE);
+      pres.saveAndClose();
+      record = { award: r.award, name: r.name, slideId: copy.getId(), slideUrl: copy.getUrl() };
+      made[r.key] = record;
+      setSetting_('certificates', JSON.stringify(made));
+    }
+    var slideId = record.slideId || (String(record.slideUrl || '').match(/\/d\/([^/]+)/) || [])[1];
+    if (!slideId) throw new Error('Missing editable certificate ID for ' + r.key + '.');
+    if (!record.pdfId) {
+      var pdf = DriveApp.createFile(DriveApp.getFileById(slideId).getAs(MimeType.PDF).setName(filename + '.pdf'));
+      record.pdfId = pdf.getId();
+      setSetting_('certificates', JSON.stringify(made));
+    }
+    if (!record.pptxId) {
+      record.pptxId = DriveApp.createFile(exportCertificatePptx_(slideId, filename)).getId();
+      setSetting_('certificates', JSON.stringify(made));
+    }
   });
-  setSetting_('certificatesSent', JSON.stringify(sent.concat(pending)));
-  return { ok: true, sent: pending.length };
+
+  var batch = [];
+  var attachments = [];
+  var bytes = 0;
+  var delivered = 0;
+  function deliver() {
+    if (!batch.length) return;
+    MailApp.sendEmail({
+      to: CERT_RECIPIENT,
+      subject: 'Certificates of award: ' + CERT_EVENT,
+      body: 'PPTX and PDF certificates are attached. Editable Google Slides links:\n\n' + batch.map(function (r) {
+        return r.award + ' - ' + r.name + '\n' + made[r.key].slideUrl;
+      }).join('\n\n'),
+      attachments: attachments
+    });
+    batch.forEach(function (r) { sent.push(r.key); });
+    setSetting_('certificatesSent', JSON.stringify(sent));
+    delivered += batch.length;
+    batch = []; attachments = []; bytes = 0;
+  }
+  pending.forEach(function (r) {
+    var record = made[r.key];
+    var files = [DriveApp.getFileById(record.pptxId).getBlob(), DriveApp.getFileById(record.pdfId).getBlob()];
+    var size = files.reduce(function (total, blob) { return total + blob.getBytes().length; }, 0);
+    if (size > CERT_EMAIL_MAX_BYTES) throw new Error('One certificate exceeds the attachment limit; editable files remain saved in Drive.');
+    if (batch.length && bytes + size > CERT_EMAIL_MAX_BYTES) deliver();
+    batch.push(r); attachments = attachments.concat(files); bytes += size;
+  });
+  deliver();
+  return { ok: true, sent: delivered };
 }
 
 // Button in the sheet: Awards > Send certificates now.
@@ -604,6 +686,6 @@ function onOpen() {
 }
 
 function sendCertificatesNow() {
-  var result = locked_(makeAndSendCertificates_);
+  var result = sendAwardCertificates();
   SpreadsheetApp.getUi().alert(result.ok ? 'Certificates sent: ' + result.sent + '.' : result.error);
 }

@@ -91,3 +91,11 @@ node --test tests/scoring.test.mjs
 - The Apps Script service does not limit wrong PIN attempts, so use a long PIN.
 - The service does not check a nominee name against the staff list. The page makes that check.
 - The dialysis technician awards use the criteria text of the Dialysis Technician awards from the proposal.
+
+## Certificate email automation
+
+- Run `installAutomationTriggers` once from the current Apps Script editor and approve Drive, Slides, URL Fetch, and email permissions. Re-running it replaces only this app's two scheduled triggers.
+- Certificates are emailed to `nncluster@spmcdvo.net` on **20 October 2026 at 12:00 noon Manila time**, when nominations and scoring close. The winner snapshot is kept private until the public announcement on **23 October 2026 at 12:00 noon Manila time**.
+- A native Google Slides certificate template is configured in `CERT_TEMPLATE_ID`. Each certificate is attached as both PPTX and PDF, with an editable Slides link. Large sets are split into separate emails.
+- `sendAwardCertificates` can retry after the email time; saved files and successfully sent batches are reused. It refuses to send before the deadline. The private `certificateEmailLog` setting records success or failure.
+- Save and deploy a new version after updating `Code.gs`; the existing deployment URL and committee credentials can stay unchanged.

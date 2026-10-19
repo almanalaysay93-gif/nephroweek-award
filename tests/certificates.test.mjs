@@ -47,7 +47,7 @@ test('every certificate gets a citation and the template ID is set', () => {
     const text = ctx.CERT_CITATIONS[award.id];
     assert.ok(text && text.startsWith('For ') && !text.endsWith('.'), award.id);
   }
-  assert.equal(ctx.CERT_TEMPLATE_ID, '1Q0cVE9q4iKW3ZEZDII_fw_2RZfKXwywC');
+  assert.equal(ctx.CERT_TEMPLATE_ID, '1Frx4kie2fDbHSvbScAcJZSXdDNQa4xIO2a17t8GrUQ0');
 });
 
 test('no winners means no certificates', () => {
