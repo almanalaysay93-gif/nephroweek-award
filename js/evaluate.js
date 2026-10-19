@@ -1,3 +1,4 @@
+import { NURSES } from './staff.js';
 import { AWARDS, RATING_SCALE } from './awards.js';
 import { getCommittee, saveScore } from './api.js?v=20261019-score-save';
 import { normName, weightedTotal, validRatings, rankVotes } from './scoring.js?v=20261019-score-save';
@@ -319,6 +320,10 @@ $('#gate-form').addEventListener('submit', async (event) => {
       gateSnapshot = await getCommittee(pin, username);
       gateIdentity = identity;
       const names = new Map();
+      for (const surname of ['GILLESANIA', 'MACHITAR', 'GASCON', 'MARTEL']) {
+        const name = NURSES.find((n) => n.split(',')[0] === surname);
+        if (name) names.set(normName(name), name);
+      }
       for (const score of gateSnapshot.scores || []) {
         const name = String(score.evaluator || '').trim();
         if (name && !names.has(normName(name))) names.set(normName(name), name);
@@ -333,7 +338,6 @@ $('#gate-form').addEventListener('submit', async (event) => {
       return;
     }
     let evaluator = form.evaluator.value;
-    if (evaluator === '__new__') evaluator = $('#new-evaluator').value.trim().replace(/\\s+/g, ' ');
     if (!evaluator) { msg.textContent = 'Choose your name.'; form.evaluator.focus(); return; }
     const existing = (gateSnapshot.scores || []).find(s => normName(s.evaluator) === normName(evaluator));
     if (existing) evaluator = existing.evaluator;
