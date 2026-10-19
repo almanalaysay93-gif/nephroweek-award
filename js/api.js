@@ -1,4 +1,4 @@
-import { ENDPOINT } from './config.js?v=20261019-score-save';
+import { ENDPOINT } from './config.js?v=20261019-score-deployment2';
 import { AWARDS, awardById } from './awards.js?v=20261019-patient-tech';
 import { NURSES, ATTENDANTS } from './staff.js';
 import { normName, nominationError, validRatings } from './scoring.js';
